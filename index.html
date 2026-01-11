@@ -1,6 +1,6 @@
-
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,34 +12,46 @@
             font-family: 'Montserrat', sans-serif;
             scroll-behavior: smooth;
         }
-        h1, h2, h3, .font-mystic {
+        
+        h1,
+        h2,
+        h3,
+        .font-mystic {
             font-family: 'Cinzel', serif;
         }
+        
         .bg-mystic-gradient {
             background: radial-gradient(circle at center, #2e1065 0%, #020617 100%);
         }
+        
         .gold-border {
             border: 1px solid rgba(251, 191, 36, 0.3);
         }
+        
         .rose-gold-glow {
             box-shadow: 0 0 15px rgba(253, 164, 186, 0.2);
         }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "@google/genai": "https://esm.sh/@google/genai@^1.35.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.12.0",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3"
-  }
-}
-</script>
-<link rel="stylesheet" href="/index.css">
 </head>
+
 <body class="bg-slate-950 text-slate-100 selection:bg-rose-500/30">
     <div id="root"></div>
-<script type="module" src="/index.tsx"></script>
+    <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>

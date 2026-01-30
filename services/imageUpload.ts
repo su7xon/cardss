@@ -13,9 +13,14 @@ export const uploadImage = async (file: File): Promise<string> => {
   });
 
   if (!response.ok) {
-    throw new Error('Failed to upload image');
+    const errorBody = await response.text();
+    console.error('ImgBB Upload Error:', errorBody);
+    throw new Error(`Failed to upload image: ${response.statusText}`);
   }
 
   const data = await response.json();
+  if (!data.success) {
+    throw new Error(data.error?.message || 'ImgBB upload failed');
+  }
   return data.data.url;
 };

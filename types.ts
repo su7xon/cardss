@@ -6,7 +6,7 @@ export interface Product {
   description: string;
   metaphysicalProperties: string;
   image: string;
-  category: 'Crystal' | 'Jewelry' | 'Aura';
+  category: string;
   stock: number;
 }
 
@@ -14,6 +14,7 @@ export interface Booking {
   id: string;
   clientName: string;
   email: string;
+  phone: string;
   service: string;
   price: number;
   date: string;
@@ -24,6 +25,24 @@ export interface Booking {
     tob: string;
     pob: string;
   };
+}
+
+export interface Order {
+  id: string;
+  customerName: string;
+  phone: string;
+  address: string;
+  pincode: string;
+  items: {
+    productId: string;
+    name: string;
+    quantity: number;
+    price: number
+  }[];
+  total: number;
+  paymentMethod: 'UPI' | 'COD' | 'WhatsApp';
+  status: 'Pending' | 'Completed' | 'Cancelled';
+  createdAt: any; // Timestamp
 }
 
 export interface Testimonial {
@@ -38,9 +57,12 @@ export interface Testimonial {
 export interface Service {
   id: string;
   name: string;
+  category: string;
   price: number;
   duration: string;
   icon: string;
+  image?: string;
+  description?: string;
 }
 
 export interface AboutContent {
@@ -50,14 +72,39 @@ export interface AboutContent {
   credentials: string[];
 }
 
+export interface BlogPost {
+  id: string;
+  title: string;
+  content: string;
+  image?: string;
+  excerpt?: string;
+  createdAt: any;
+  slug: string;
+}
+
+
+export interface ServiceCategory {
+  id: string;
+  name: string;
+  icon: string;
+  image?: string;
+  description?: string;
+}
+
 export interface SiteSettings {
   about: AboutContent;
   services: Service[];
+  serviceCategories: ServiceCategory[];
+  productCategories: string[];
+  adminPassword?: string;
 }
 
 export enum AdminView {
   DASHBOARD = 'DASHBOARD',
   INVENTORY = 'INVENTORY',
+  SERVICES = 'SERVICES',
+  ORDERS = 'ORDERS',
+  BLOG = 'BLOG',
   APPOINTMENTS = 'APPOINTMENTS',
   MODERATION = 'MODERATION',
   SETTINGS = 'SETTINGS'

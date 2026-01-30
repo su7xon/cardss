@@ -97,6 +97,8 @@ export interface SiteSettings {
   serviceCategories: ServiceCategory[];
   productCategories: string[];
   adminPassword?: string;
+  heroImage?: string;
+  heroVideo?: string;
 }
 
 export enum AdminView {

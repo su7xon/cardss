@@ -7,10 +7,13 @@ interface HomeProps {
   serviceCategories: ServiceCategory[];
   testimonials: Testimonial[];
   aboutContent: AboutContent;
+  heroImage?: string;
+  heroVideo?: string;
 }
 
-const Home: React.FC<HomeProps> = ({ services, serviceCategories, testimonials, aboutContent }) => {
+const Home: React.FC<HomeProps> = ({ services, serviceCategories, testimonials, aboutContent, heroImage, heroVideo }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [showAllReviews, setShowAllReviews] = useState(false);
 
@@ -52,24 +55,35 @@ const Home: React.FC<HomeProps> = ({ services, serviceCategories, testimonials, 
 
   return (
     <div className="space-y-2 md:space-y-12 pb-8 md:pb-16">
-      <section className="relative w-full h-auto md:h-[90vh] aspect-[4/5] md:aspect-auto overflow-hidden bg-rose-100/50">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="w-full h-full object-cover object-[35%_center] md:object-center md:scale-95 transition-transform duration-1000"
-        >
-          <source src="/assets/tarot_background.mp4" type="video/mp4" />
-        </video>
+      <section
+        className="relative w-full h-auto md:h-[90vh] aspect-[4/5] md:aspect-auto overflow-hidden bg-black bg-cover bg-center"
+        style={{ backgroundImage: `url('${heroImage || '/assets/hero_bg_final_2.png'}')` }}
+      >
+        {heroVideo && (
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+            poster={heroImage || '/assets/hero_bg_final_2.png'}
+          >
+            <source src={heroVideo} type="video/mp4" />
+          </video>
+        )}
 
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-          <div className="max-w-[280px] sm:max-w-3xl w-full p-2 md:p-0">
-            <h1 className="text-xl md:text-5xl font-mystic text-white mb-2 tracking-tighter animate-fade-in drop-shadow-lg">
+        {/* Dark Overlay for better text readability */}
+        <div className="absolute inset-0 bg-black/40 z-0"></div>
+
+
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 z-10">
+          <div className="max-w-[95%] sm:max-w-3xl w-full p-2 md:p-0">
+            <h1 className="text-lg sm:text-xl md:text-5xl font-mystic font-bold text-white mb-2 tracking-tighter animate-fade-in drop-shadow-lg whitespace-nowrap">
               Healing • Guidance • Tarot
             </h1>
 
-            <p className="text-[10px] md:text-xl text-slate-100 mb-6 md:mb-10 font-light leading-relaxed drop-shadow-md max-w-2xl mx-auto">
+            <p className="text-[10px] md:text-xl text-white mb-6 md:mb-10 font-semibold leading-relaxed drop-shadow-lg max-w-2xl mx-auto">
               Personalized tarot reading, healing guidance <br /> & authentic crystals for balance, clarity and growth.
             </p>
             <div className="flex flex-col md:flex-row gap-2 md:gap-4 justify-center items-center">

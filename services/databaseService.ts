@@ -276,7 +276,9 @@ const DEFAULT_SETTINGS: SiteSettings = {
     { id: '3', name: 'Special Package', icon: '✨', description: 'Curated bundles of healing sessions and tools for complete transformation.' }
   ],
   productCategories: ['Crystal', 'Jewelry', 'Aura', 'Bracelet', 'Raw Stone', 'Charged Stone'],
-  adminPassword: 'pooja.gupta001'
+  adminPassword: 'pooja.gupta001',
+  heroImage: '/assets/hero_bg_final_2.png',
+  heroVideo: '/assets/bg_final.mp4'
 };
 
 export const subscribeToSettings = (callback: (settings: SiteSettings) => void) => {
@@ -346,6 +348,11 @@ export const updateProductCategories = async (categories: string[]) => {
 export const updateAdminPassword = async (password: string) => {
   const settingsDoc = doc(db, 'settings', 'site');
   await setDoc(settingsDoc, { adminPassword: password }, { merge: true });
+};
+
+export const updateHeroBackground = async (heroImage: string, heroVideo: string) => {
+  const settingsDoc = doc(db, 'settings', 'site');
+  await setDoc(settingsDoc, { heroImage, heroVideo }, { merge: true });
 };
 
 export const getDefaultSettings = () => DEFAULT_SETTINGS;

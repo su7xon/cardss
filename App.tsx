@@ -23,9 +23,9 @@ import {
 } from './services/databaseService';
 
 const App: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS || []);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [testimonials, setTestimonials] = useState<Testimonial[]>(INITIAL_TESTIMONIALS);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(INITIAL_TESTIMONIALS || []);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(getDefaultSettings());
   const [isLoading, setIsLoading] = useState(true);
   const [firebaseError, setFirebaseError] = useState<string | null>(null);
@@ -124,7 +124,7 @@ const App: React.FC = () => {
             </div>
           ) : (
             <Routes>
-              <Route path="/" element={<Home services={siteSettings.services} serviceCategories={siteSettings.serviceCategories} testimonials={testimonials} aboutContent={siteSettings.about} />} />
+              <Route path="/" element={<Home services={siteSettings.services} serviceCategories={siteSettings.serviceCategories} testimonials={testimonials} aboutContent={siteSettings.about} heroImage={siteSettings.heroImage} heroVideo={siteSettings.heroVideo} />} />
               <Route path="/shop" element={<Shop products={products} />} />
               <Route path="/blog" element={<BlogPage />} />
               <Route path="/checkout" element={<Checkout />} />

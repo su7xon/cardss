@@ -1,11 +1,18 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Initialize the API
-const genAI = new GoogleGenerativeAI(process.env.API_KEY || '');
-const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
 export const getCrystalWisdom = async (crystalName: string, intent: string) => {
   try {
+    const apiKey = process.env.API_KEY || '';
+    if (!apiKey) {
+      console.warn("Gemini API Key is missing");
+      return "Crystal wisdom is currently unavailable. Please contact support.";
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: `Provide a mystical and professional metaphysical description for the crystal: ${crystalName}. The user's intent is: ${intent}. Keep it under 100 words. Mention chakras and zodiac signs.` }] }],
       generationConfig: {

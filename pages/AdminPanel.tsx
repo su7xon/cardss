@@ -15,6 +15,7 @@ import {
   updateServiceCategories,
   updateProductCategories,
   updateAdminPassword,
+  updateHeroBackground,
   getDefaultSettings,
   subscribeToOrders,
   updateOrderStatus,
@@ -110,6 +111,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [categoryImageFile, setCategoryImageFile] = useState<File | null>(null);
   const [categoryImagePreview, setCategoryImagePreview] = useState<string | null>(null);
   const categoryFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Hero Background State
+  const [heroImageFile, setHeroImageFile] = useState<File | null>(null);
+  const [heroImagePreview, setHeroImagePreview] = useState<string | null>(null);
+  const heroImageInputRef = useRef<HTMLInputElement>(null);
+
+  const [heroVideoFile, setHeroVideoFile] = useState<File | null>(null);
+  const heroVideoInputRef = useRef<HTMLInputElement>(null);
+  const [heroVideoName, setHeroVideoName] = useState<string | null>(null);
 
   // Password change state
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
@@ -1626,6 +1636,89 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="space-y-8 animate-fade-in">
             <h3 className="text-2xl font-mystic text-rose-900">Admin Settings</h3>
 
+            {/* Hero Background Section */}
+            <div className="bg-white p-6 md:p-10 rounded-3xl border border-rose-100 shadow-sm space-y-8">
+              <div className="flex items-center gap-4 border-b border-rose-50 pb-6">
+                <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-2xl">✨</div>
+                <div>
+                  <h3 className="text-xl font-mystic text-rose-900">Home Hero Background</h3>
+                  <p className="text-slate-500 text-sm">Manage the primary background image and video.</p>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-8">
+                {/* Hero Image */}
+                <div className="space-y-4">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Hero Image (Static)</label>
+                  <div
+                    onClick={() => heroImageInputRef.current?.click()}
+                    className="aspect-video relative border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-rose-300 hover:bg-rose-50/50 transition-all p-4 overflow-hidden"
+                  >
+                    {heroImagePreview || siteSettings.heroImage ? (
+                      <img src={heroImagePreview || siteSettings.heroImage} className="absolute inset-0 w-full h-full object-cover" alt="Hero Preview" />
+                    ) : (
+                      <div className="text-center">
+                        <span className="text-3xl block mb-2">🖼️</span>
+                        <span className="text-xs font-bold text-slate-400">UPLOAD IMAGE</span>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      ref={heroImageInputRef}
+                      className="hidden"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setHeroImageFile(file);
+                          const reader = new FileReader();
+                          reader.onloadend = () => setHeroImagePreview(reader.result as string);
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Hero Video */}
+                <div className="space-y-4">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Hero Video (Optional)</label>
+                  <div
+                    onClick={() => heroVideoInputRef.current?.click()}
+                    className="aspect-video relative border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-rose-300 hover:bg-rose-50/50 transition-all p-4"
+                  >
+                    {heroVideoName || siteSettings.heroVideo ? (
+                      <div className="text-center">
+                        <span className="text-3xl block mb-2">📹</span>
+                        <span className="text-sm font-semibold text-rose-600 truncate max-w-[200px] block">
+                          {heroVideoName || (siteSettings.heroVideo?.split('/').pop())}
+                        </span>
+                        <span className="text-[10px] text-slate-400 block mt-1">CLICK TO CHANGE</span>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <span className="text-3xl block mb-2">🎬</span>
+                        <span className="text-xs font-bold text-slate-400">UPLOAD VIDEO</span>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      ref={heroVideoInputRef}
+                      className="hidden"
+                      accept="video/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setHeroVideoFile(file);
+                          setHeroVideoName(file.name);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* About Section */}
             <div className="bg-white p-6 rounded-2xl border border-rose-100 shadow-sm">
               <h4 className="text-lg font-mystic text-rose-800 mb-6 flex items-center gap-2">
@@ -1665,25 +1758,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     placeholder="Certified Vedic Astrologer&#10;Crystal Healing Practitioner&#10;Tarot Reader"
                   />
                 </div>
-
-                <button
-                  onClick={async () => {
-                    setSettingsSaving(true);
-                    try {
-                      await updateAboutContent(aboutForm);
-                      showToast('About section updated!', 'success');
-                    } catch (error) {
-                      console.error('Error saving about:', error);
-                      showToast('Failed to save about section', 'error');
-                    } finally {
-                      setSettingsSaving(false);
-                    }
-                  }}
-                  disabled={settingsSaving}
-                  className="bg-rose-500 text-white px-6 py-3 rounded-xl font-bold tracking-widest hover:bg-rose-600 transition-colors disabled:opacity-50"
-                >
-                  {settingsSaving ? 'SAVING...' : 'SAVE ABOUT SECTION'}
-                </button>
               </div>
             </div>
 
@@ -1735,7 +1809,45 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </form>
             </div>
 
+            <div className="pt-4">
+              <button
+                type="button"
+                onClick={async () => {
+                  setSettingsSaving(true);
+                  try {
+                    let heroImage = siteSettings.heroImage || '';
+                    let heroVideo = siteSettings.heroVideo || '';
 
+                    if (heroImageFile) {
+                      heroImage = await uploadImage(heroImageFile);
+                    }
+                    if (heroVideoFile) {
+                      heroVideo = await uploadImage(heroVideoFile);
+                    }
+
+                    await updateAboutContent(aboutForm);
+                    await updateServices(servicesForm);
+                    await updateServiceCategories(categoriesForm);
+                    await updateProductCategories(productCategoriesForm);
+                    await updateHeroBackground(heroImage, heroVideo);
+
+                    showToast('All settings saved successfully');
+                    setHeroImageFile(null);
+                    setHeroVideoFile(null);
+                    setHeroVideoName(null);
+                  } catch (error) {
+                    console.error('Error saving settings:', error);
+                    showToast('Failed to save settings', 'error');
+                  } finally {
+                    setSettingsSaving(false);
+                  }
+                }}
+                disabled={settingsSaving}
+                className="w-full bg-rose-500 text-white px-8 py-5 rounded-2xl font-bold tracking-widest hover:bg-rose-600 transition-all shadow-xl shadow-rose-200 active:scale-[0.98] disabled:opacity-50"
+              >
+                {settingsSaving ? 'SAVING ALL SETTINGS...' : 'SAVE ALL SITE SETTINGS'}
+              </button>
+            </div>
           </div>
         )}
         {showCategoryModal && (

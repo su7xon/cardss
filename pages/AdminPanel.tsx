@@ -668,6 +668,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <button onClick={handleLogout} className="hidden md:flex w-full items-center gap-4 px-6 py-4 rounded-xl text-red-300 hover:bg-red-500/10 mt-10 transition-colors">
           <span>🚪</span> Logout
         </button>
+        <p className="hidden md:block text-center text-[10px] text-slate-300 mt-4 font-mono">v1.1.0 (Hero Update)</p>
       </aside>
 
       <main className="flex-grow bg-white border border-rose-100 rounded-3xl p-4 md:p-8 min-h-[500px] md:min-h-[600px] shadow-sm">

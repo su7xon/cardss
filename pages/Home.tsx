@@ -59,19 +59,18 @@ const Home: React.FC<HomeProps> = ({ services, serviceCategories, testimonials, 
         className="relative w-full h-auto md:h-[90vh] aspect-[4/5] md:aspect-auto overflow-hidden bg-black bg-cover bg-center"
         style={{ backgroundImage: `url('${heroImage || '/assets/hero_bg_final_2.png'}')` }}
       >
-        {heroVideo && (
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover"
-            poster={heroImage || '/assets/hero_bg_final_2.png'}
-          >
-            <source src={heroVideo} type="video/mp4" />
-          </video>
-        )}
+        {/* Video Background */}
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+          poster={heroImage || '/assets/hero_bg_final_2.png'}
+        >
+          <source src="/assets/grok_video.mp4" type="video/mp4" />
+        </video>
 
         {/* Dark Overlay for better text readability */}
         <div className="absolute inset-0 bg-black/40 z-0"></div>

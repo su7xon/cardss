@@ -278,7 +278,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   productCategories: ['Crystal', 'Jewelry', 'Aura', 'Bracelet', 'Raw Stone', 'Charged Stone'],
   adminPassword: 'pooja.gupta001',
   heroImage: '/assets/hero_bg_final_2.png',
-  heroVideo: '/assets/bg_final.mp4'
+  heroVideo: undefined
 };
 
 export const subscribeToSettings = (callback: (settings: SiteSettings) => void) => {

@@ -68,6 +68,7 @@ const Home: React.FC<HomeProps> = ({ services, serviceCategories, testimonials, 
           className="absolute inset-0 w-full h-full object-cover"
           poster="/assets/hero_bg_final_2.png"
         >
+          <source src="/assets/laptop_hero.mp4" type="video/mp4" media="(min-width: 768px)" />
           <source src="/assets/grok_video.mp4" type="video/mp4" />
         </video>
 

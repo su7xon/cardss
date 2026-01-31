@@ -65,7 +65,7 @@ const Home: React.FC<HomeProps> = ({ services, serviceCategories, testimonials, 
           muted
           loop
           playsInline
-          className="absolute inset-0 w-full h-full object-cover md:object-[45%_center]"
+          className="absolute inset-0 w-full h-full object-cover md:object-[42%_center]"
           poster="/assets/hero_bg_final_2.png"
         >
           <source src="/assets/laptop_hero.mp4" type="video/mp4" media="(min-width: 768px)" />

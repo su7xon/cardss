@@ -57,7 +57,6 @@ const Home: React.FC<HomeProps> = ({ services, serviceCategories, testimonials, 
     <div className="space-y-2 md:space-y-12 pb-8 md:pb-16">
       <section
         className="relative w-full h-auto md:h-[90vh] aspect-[4/5] md:aspect-auto overflow-hidden bg-black bg-cover bg-center"
-        style={{ backgroundImage: `url('${heroImage || '/assets/hero_bg_final_2.png'}')` }}
       >
         {/* Video Background */}
         <video
@@ -67,7 +66,7 @@ const Home: React.FC<HomeProps> = ({ services, serviceCategories, testimonials, 
           loop
           playsInline
           className="absolute inset-0 w-full h-full object-cover"
-          poster={heroImage || '/assets/hero_bg_final_2.png'}
+          poster="/assets/hero_bg_final_2.png"
         >
           <source src="/assets/grok_video.mp4" type="video/mp4" />
         </video>

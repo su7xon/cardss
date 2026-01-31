@@ -1,4 +1,4 @@
-const CACHE_NAME = 'divine-guidance-v1';
+const CACHE_NAME = 'divine-guidance-v1.1';
 const urlsToCache = [
     '/',
     '/index.html',

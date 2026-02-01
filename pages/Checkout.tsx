@@ -266,6 +266,18 @@ const Checkout: React.FC = () => {
                                 </div>
 
                                 <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Email Address</label>
+                                    <input
+                                        required
+                                        type="email"
+                                        value={checkoutForm.email}
+                                        onChange={(e) => setCheckoutForm({ ...checkoutForm, email: e.target.value })}
+                                        className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:border-rose-500 transition-all font-medium text-slate-800 placeholder:font-normal"
+                                        placeholder="example@gmail.com"
+                                    />
+                                </div>
+
+                                <div>
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-1">Phone Number</label>
                                     <input
                                         required

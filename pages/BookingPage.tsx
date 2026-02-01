@@ -435,21 +435,6 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
 
                 {paymentMethod === 'UPI' && (
                   <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4 animate-fade-in">
-                    <div className="border-t border-slate-200 pt-4">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">UPI ID (VPA)</p>
-                      <div className="flex items-center gap-2 bg-white p-3 rounded-xl border border-rose-100 shadow-sm">
-                        <code className="flex-grow text-rose-700 font-mono text-sm break-all">{upiId}</code>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(upiId);
-                            alert('UPI ID copied!');
-                          }}
-                          className="text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded hover:bg-rose-200 transition-colors"
-                        >
-                          COPY
-                        </button>
-                      </div>
-                    </div>
                   </div>
                 )}
 
@@ -457,7 +442,7 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
                   onClick={() => finalizeBooking(paymentMethod)}
                   className={`w-full text-white py-4 rounded-xl font-bold tracking-widest transition-all active:scale-[0.98] shadow-xl ${paymentMethod === 'UPI' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-slate-800 hover:bg-slate-700'}`}
                 >
-                  {paymentMethod === 'UPI' ? 'OPEN UPI APP' : 'CHAT & CONFIRM'}
+                  {paymentMethod === 'UPI' ? 'PAY' : 'CHAT & CONFIRM'}
                 </button>
               </div>
             </div>

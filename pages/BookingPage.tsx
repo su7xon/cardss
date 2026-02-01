@@ -136,7 +136,7 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
       await sendBookingNotification({
         ...bookingData,
         email: user?.email || formData.email || bookingData.email
-      });
+      }, formData.email || user?.email); // Pass email as recipient
 
       if (method === 'WhatsApp') {
         const message = encodeURIComponent(

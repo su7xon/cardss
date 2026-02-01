@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { Product } from '../types';
-import { addOrder } from '../services/databaseService';
+import { Product, SiteSettings } from '../types';
+import { addOrder, subscribeToSettings, getDefaultSettings } from '../services/databaseService';
+import { openPaymentModal } from '../services/razorpayService';
 
 interface CartItem {
     product: Product;
@@ -22,6 +23,8 @@ const Checkout: React.FC = () => {
         paymentMethod: 'UPI' as 'UPI' | 'COD' | 'WhatsApp'
     });
 
+    const [upiId, setUpiId] = useState<string>(getDefaultSettings().upiId || 'pooja.gupta639783@okhdfcbank');
+
     useEffect(() => {
         if (location.state && location.state.cart) {
             setCart(location.state.cart);
@@ -29,10 +32,20 @@ const Checkout: React.FC = () => {
             // Redirect to shop if no cart data
             navigate('/shop');
         }
+
+        const unsubscribe = subscribeToSettings((settings) => {
+            if (settings.upiId) {
+                setUpiId(settings.upiId);
+            }
+        });
+        return () => unsubscribe();
     }, [location, navigate]);
 
     const cartTotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
 
+    // State for the Diya Success Modal
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [showUpiModal, setShowUpiModal] = useState(false);
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
     const handlePlaceOrder = async (e: React.FormEvent) => {
@@ -67,6 +80,13 @@ const Checkout: React.FC = () => {
                 price: item.product.price
             }));
 
+            if (checkoutForm.paymentMethod === 'UPI') {
+                // Trigger Manual UPI Modal
+                setShowUpiModal(true);
+                return;
+            }
+
+            // Normal COD or WhatsApp Flow
             await addOrder({
                 customerName: checkoutForm.name,
                 phone: checkoutForm.phone,
@@ -97,24 +117,32 @@ const Checkout: React.FC = () => {
                 );
 
                 window.open(`https://wa.me/916397832791?text=${message}`, '_blank');
+                navigate('/shop');
             } else {
-                alert('Order placed successfully! We will contact you shortly.');
+                // Show Custom Diya Modal for COD (if allowed later)
+                // Currently only UPI triggers Razorpay, WhatsApp triggers WA.
+                // If COD exists, it goes here.
+                setShowSuccessModal(true);
             }
-
-            navigate('/shop');
 
         } catch (error: any) {
             console.error('Error placing order:', error);
             alert('Failed to place order: ' + (error?.message || error));
-        } finally {
-            setIsPlacingOrder(false);
+            setIsPlacingOrder(false); // Re-enable button on error
         }
+        // removing finally block here as it's handled in specific flows or internally
+    };
+
+    const handleCloseModal = () => {
+        setShowSuccessModal(false);
+        navigate('/shop');
+        setIsPlacingOrder(false);
     };
 
     if (cart.length === 0) return null;
 
     return (
-        <div className="min-h-screen bg-slate-50 pb-24 md:pb-12">
+        <div className="min-h-screen bg-slate-50 pb-24 md:pb-12 relative">
             {/* Header */}
             <div className="bg-white shadow-sm sticky top-0 z-10 px-4 py-4 md:py-6">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -305,6 +333,129 @@ const Checkout: React.FC = () => {
                 </button>
             </div>
 
+            {/* Custom Diya Success Modal */}
+            {showSuccessModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-3xl p-8 md:p-12 max-w-md w-full text-center relative shadow-2xl border border-rose-100">
+                        {/* Decorative background elements */}
+                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-rose-300 via-yellow-400 to-rose-300 rounded-t-3xl"></div>
+
+                        {/* Diya Glow Animation */}
+                        <div className="relative mb-6 inline-block">
+                            <div className="absolute inset-0 bg-yellow-400 blur-xl opacity-30 animate-pulse rounded-full"></div>
+                            <span className="text-6xl md:text-7xl relative z-10 drop-shadow-lg animate-bounce-slow">🪔</span>
+                        </div>
+
+                        <h2 className="text-2xl md:text-3xl font-mystic text-rose-900 mb-2">Order Blessed!</h2>
+                        <p className="text-slate-600 mb-8 leading-relaxed">
+                            Thank you, <span className="font-bold text-rose-600">{checkoutForm.name}</span>.<br />
+                            Your offering has been received. We will contact you shortly for payment confirmation.
+                        </p>
+
+                        <button
+                            onClick={handleCloseModal}
+                            className="w-full bg-rose-500 hover:bg-rose-600 text-white py-3.5 rounded-xl font-bold tracking-widest transition-all shadow-lg hover:shadow-rose-200 active:scale-95 uppercase text-sm"
+                        >
+                            Continue Shopping
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Manual UPI Payment Modal */}
+            {showUpiModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl border border-rose-100 relative">
+                        <button
+                            onClick={() => setShowUpiModal(false)}
+                            className="absolute top-4 right-4 text-slate-400 hover:text-rose-500 transition-colors"
+                        >
+                            ✕
+                        </button>
+
+                        <div className="text-center space-y-6">
+                            <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto text-3xl animate-bounce">
+                                💠
+                            </div>
+
+                            <div>
+                                <h3 className="text-2xl font-mystic text-rose-900 mb-2">Scan or Pay to UPI</h3>
+                                <p className="text-slate-500 text-sm">Transfer the total amount to complete your order.</p>
+                            </div>
+
+                            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
+                                <div>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Amount</p>
+                                    <p className="text-3xl font-bold text-slate-800">₹{cartTotal}</p>
+                                </div>
+                                <div className="border-t border-slate-200 pt-4">
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">UPI ID (VPA)</p>
+                                    <div className="flex items-center gap-2 bg-white p-3 rounded-xl border border-rose-100 shadow-sm">
+                                        <code className="flex-grow text-rose-700 font-mono text-sm break-all">{upiId}</code>
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(upiId);
+                                                alert('UPI ID copied!');
+                                            }}
+                                            className="text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded hover:bg-rose-200 transition-colors"
+                                        >
+                                            COPY
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* UPI Intent Link (Mobile Only) */}
+                            <a
+                                href={`upi://pay?pa=${upiId}&pn=Divine Guidance Studio&am=${cartTotal}&cu=INR`}
+                                className="block w-full bg-rose-600 text-white py-3 rounded-xl font-bold tracking-widest hover:bg-rose-700 transition-all shadow-lg shadow-rose-200 active:scale-[0.98]"
+                            >
+                                PAY VIA UPI APP
+                            </a>
+
+                            <button
+                                onClick={async () => {
+                                    setIsPlacingOrder(true);
+                                    try {
+                                        const orderItems = cart.map(item => ({
+                                            productId: item.product.id,
+                                            name: item.product.name,
+                                            quantity: item.quantity,
+                                            price: item.product.price
+                                        }));
+
+                                        await addOrder({
+                                            customerName: checkoutForm.name,
+                                            phone: checkoutForm.phone,
+                                            address: checkoutForm.address,
+                                            pincode: checkoutForm.pincode,
+                                            items: orderItems,
+                                            total: cartTotal,
+                                            paymentMethod: 'UPI',
+                                            status: 'Pending', // Mark as pending until admin verifies
+                                            transactionId: 'Manual-UPI'
+                                        });
+                                        setShowUpiModal(false);
+                                        setShowSuccessModal(true);
+                                    } catch (err) {
+                                        console.error('Error saving order:', err);
+                                        alert('Failed to place order. Please try again.');
+                                    } finally {
+                                        setIsPlacingOrder(false);
+                                    }
+                                }}
+                                className="w-full bg-slate-800 text-white py-3 rounded-xl font-bold tracking-widest hover:bg-slate-700 transition-all active:scale-[0.98]"
+                            >
+                                I HAVE PAID
+                            </button>
+
+                            <p className="text-xs text-slate-400 italic">
+                                * Please ensure payment is completed before clicking "I HAVE PAID". Admin will verify the transaction.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -23,7 +23,8 @@ import {
   subscribeToBlogs,
   addBlog,
   updateBlog,
-  deleteBlog
+  deleteBlog,
+  updateUpiId
 } from '../services/databaseService';
 import { uploadImage } from '../services/imageUpload';
 import Toast from '../components/Toast';
@@ -121,6 +122,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const heroVideoInputRef = useRef<HTMLInputElement>(null);
   const [heroVideoName, setHeroVideoName] = useState<string | null>(null);
 
+
+
+  // UPI ID State
+  const [upiIdForm, setUpiIdForm] = useState('');
+
   // Password change state
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -173,6 +179,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           ? settings.productCategories
           : defaultSettings.productCategories
       );
+      setUpiIdForm(settings.upiId || 'pooja.gupta639783@okhdfcbank');
     });
 
     const unsubscribeOrders = subscribeToOrders((data) => {
@@ -450,6 +457,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       showToast('Failed to update password', 'error');
     } finally {
       setIsChangingPassword(false);
+    }
+
+  };
+
+  const handleUpiIdSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSettingsSaving(true);
+    try {
+      await updateUpiId(upiIdForm);
+      showToast('UPI ID updated successfully!', 'success');
+    } catch (error) {
+      console.error('Error updating UPI ID:', error);
+      showToast('Failed to update UPI ID', 'error');
+    } finally {
+      setSettingsSaving(false);
     }
   };
 
@@ -1457,12 +1479,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           className="p-2 hover:bg-rose-100 text-slate-400 hover:text-rose-600 rounded-lg transition-colors"
                         >✏️</button>
                         <button
-                          onClick={async () => {
-                            if (window.confirm('Delete category?')) {
-                              const updated = categoriesForm.filter(c => c.id !== cat.id);
-                              setCategoriesForm(updated);
-                              await updateServiceCategories(updated);
-                            }
+                          onClick={() => {
+                            setConfirmModal({
+                              isOpen: true,
+                              title: 'Delete Service Category?',
+                              message: `Are you sure you want to delete "${cat.name}"? Usage of this category in services will need to be updated.`,
+                              onConfirm: async () => {
+                                setIsProcessingAction(true);
+                                try {
+                                  const updated = categoriesForm.filter(c => c.id !== cat.id);
+                                  setCategoriesForm(updated);
+                                  await updateServiceCategories(updated);
+                                  showToast('Category deleted successfully', 'success');
+                                } catch (error) {
+                                  console.error('Error deleting category:', error);
+                                  showToast('Failed to delete category', 'error');
+                                } finally {
+                                  setIsProcessingAction(false);
+                                  setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                                }
+                              }
+                            });
                           }}
                           className="p-2 hover:bg-red-100 text-slate-400 hover:text-red-500 rounded-lg transition-colors"
                         >🗑️</button>
@@ -1504,7 +1541,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div key={idx} className="flex items-center gap-2 bg-slate-100 text-slate-700 px-3 py-1.5 rounded-xl border border-slate-200 capitalize">
                       <span className="text-sm font-bold">{cat}</span>
                       <button
-                        onClick={() => setProductCategoriesForm(productCategoriesForm.filter((_, i) => i !== idx))}
+                        onClick={() => {
+                          setConfirmModal({
+                            isOpen: true,
+                            title: 'Delete Category?',
+                            message: `Are you sure you want to delete the product category "${cat}"? This cannot be undone.`,
+                            onConfirm: async () => {
+                              setProductCategoriesForm(productCategoriesForm.filter((_, i) => i !== idx));
+                              setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                            }
+                          });
+                        }}
                         className="hover:text-red-500 transition-colors"
                       >✕</button>
                     </div>
@@ -1677,6 +1724,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none resize-none text-slate-900"
                     placeholder="Certified Vedic Astrologer&#10;Crystal Healing Practitioner&#10;Tarot Reader"
                   />
+                </div>
+              </div>
+            </div>
+
+
+            {/* Payment Settings */}
+            <div className="bg-white p-6 rounded-2xl border border-rose-100 shadow-sm">
+              <h4 className="text-lg font-mystic text-rose-800 mb-6 flex items-center gap-2">
+                <span>💳</span> Payment Settings
+              </h4>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">UPI ID (for Direct Payments)</label>
+                  <div className="flex gap-4">
+                    <input
+                      type="text"
+                      value={upiIdForm}
+                      onChange={(e) => setUpiIdForm(e.target.value)}
+                      className="flex-grow bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900 font-mono"
+                      placeholder="example@okhdfcbank"
+                    />
+                    <button
+                      onClick={handleUpiIdSave}
+                      disabled={settingsSaving}
+                      className="bg-slate-800 text-white px-6 py-3 rounded-xl font-bold tracking-widest hover:bg-slate-700 transition-colors disabled:opacity-50 whitespace-nowrap"
+                    >
+                      SAVE ID
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    This ID will be used when customers select "UPI" at checkout.
+                  </p>
                 </div>
               </div>
             </div>

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Booking, Service, Testimonial } from '../types';
 import { addBooking, addTestimonial } from '../services/databaseService';
+import { sendBookingNotification } from '../services/emailService';
 
 interface BookingPageProps {
   services: Service[];
@@ -89,6 +90,10 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
       }
 
       await addBooking(bookingData);
+
+      // Send Email Notification
+      await sendBookingNotification(bookingData);
+
       setStep(3);
     } catch (error: any) {
       console.error('Error submitting booking:', error);

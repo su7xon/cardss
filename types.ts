@@ -40,8 +40,9 @@ export interface Order {
     price: number
   }[];
   total: number;
-  paymentMethod: 'UPI' | 'COD' | 'WhatsApp';
-  status: 'Pending' | 'Completed' | 'Cancelled';
+  paymentMethod: 'UPI' | 'COD' | 'WhatsApp' | 'Prepaid (Razorpay)';
+  status: 'Pending' | 'Completed' | 'Cancelled' | 'Paid';
+  transactionId?: string;
   createdAt: any; // Timestamp
 }
 
@@ -99,6 +100,7 @@ export interface SiteSettings {
   adminPassword?: string;
   heroImage?: string;
   heroVideo?: string;
+  upiId?: string;
 }
 
 export enum AdminView {

@@ -1,129 +1,42 @@
-const CACHE_NAME = 'divine-guidance-v1.2';
-const urlsToCache = [
-    '/',
-    '/index.html',
-    '/shop',
-    '/booking',
-    '/blog',
-    '/assets/hero_bg_new.jpg',
-    '/assets/ai_assist_icon.png'
-];
+// KILLER SERVICE WORKER
+// This worker is designed to delete all existing caches and force network requests.
+// Use this to recover from "White Screen" issues caused by aggressive caching of stale HTML.
 
-// Install event - cache static assets
+const CLEANUP_VERSION = 'cleanup-v1';
+
 self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then((cache) => {
-                console.log('Opened cache');
-                return cache.addAll(urlsToCache);
-            })
-            .catch((error) => {
-                console.error('Failed to cache:', error);
-            })
-    );
-    // Force the waiting service worker to become the active service worker
+    console.log('[SW Cleanup] Installing cleanup worker...');
+    // Skip waiting to activate immediately
     self.skipWaiting();
 });
 
-// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
+    console.log('[SW Cleanup] Activating and nuking caches...');
+
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((cacheName) => {
-                    if (cacheName !== CACHE_NAME) {
-                        console.log('Deleting old cache:', cacheName);
-                        return caches.delete(cacheName);
-                    }
+                    console.log('[SW Cleanup] Deleting cache:', cacheName);
+                    return caches.delete(cacheName);
                 })
             );
+        }).then(() => {
+            console.log('[SW Cleanup] All caches cleared.');
+            // Take control of all clients immediately
+            return self.clients.claim();
         })
     );
-    // Take control of all pages immediately
-    self.clients.claim();
 });
 
-// Fetch event - serve from cache, fall back to network
+// Intercept all requests and force them to go to the network
 self.addEventListener('fetch', (event) => {
-    // Skip non-GET requests and browser extensions
-    if (event.request.method !== 'GET' || event.request.url.startsWith('chrome-extension://')) {
-        return;
-    }
-
-    // Skip API calls and external resources (they should always be fresh)
-    if (event.request.url.includes('/api/') ||
-        event.request.url.includes('firestore.googleapis.com') ||
-        event.request.url.includes('firebase') ||
-        event.request.url.includes('groq.com')) {
-        return;
-    }
-
+    // Pure network proxy - no caching
     event.respondWith(
-        caches.match(event.request)
-            .then((response) => {
-                // Cache hit - return response
-                if (response) {
-                    return response;
-                }
-
-                // Clone the request because it can only be consumed once
-                const fetchRequest = event.request.clone();
-
-                return fetch(fetchRequest).then((response) => {
-                    // Check if we received a valid response
-                    if (!response || response.status !== 200 || response.type !== 'basic') {
-                        return response;
-                    }
-
-                    // Clone the response because it can only be consumed once
-                    const responseToCache = response.clone();
-
-                    caches.open(CACHE_NAME)
-                        .then((cache) => {
-                            cache.put(event.request, responseToCache);
-                        });
-
-                    return response;
-                });
-            })
-            .catch(() => {
-                // If both cache and network fail, show offline page
-                if (event.request.destination === 'document') {
-                    return caches.match('/');
-                }
-            })
+        fetch(event.request).catch((error) => {
+            console.error('[SW Cleanup] Network fetch failed:', error);
+            // Optional: fallback to offline page if desired, but for now just fail naturally
+            // so we don't accidentally cache a broken offline page
+        })
     );
-});
-
-// Handle push notifications (for future use)
-self.addEventListener('push', (event) => {
-    const options = {
-        body: event.data ? event.data.text() : 'New update from Divine Guidance Studio',
-        icon: '/icons/icon-192x192.png',
-        badge: '/icons/icon-72x72.png',
-        vibrate: [100, 50, 100],
-        data: {
-            dateOfArrival: Date.now(),
-            primaryKey: 1
-        },
-        actions: [
-            { action: 'explore', title: 'View Now' },
-            { action: 'close', title: 'Close' }
-        ]
-    };
-
-    event.waitUntil(
-        self.registration.showNotification('Divine Guidance Studio', options)
-    );
-});
-
-// Handle notification clicks
-self.addEventListener('notificationclick', (event) => {
-    event.notification.close();
-
-    if (event.action === 'explore') {
-        event.waitUntil(
-            clients.openWindow('/')
-        );
-    }
 });

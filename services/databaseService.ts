@@ -278,7 +278,8 @@ const DEFAULT_SETTINGS: SiteSettings = {
   productCategories: ['Crystal', 'Jewelry', 'Aura', 'Bracelet', 'Raw Stone', 'Charged Stone'],
   adminPassword: 'pooja.gupta001',
   heroImage: '/assets/hero_bg_final_2.png',
-  heroVideo: undefined
+  heroVideo: undefined,
+  upiId: 'pooja.gupta639783@okhdfcbank'
 };
 
 export const subscribeToSettings = (callback: (settings: SiteSettings) => void) => {
@@ -353,6 +354,11 @@ export const updateAdminPassword = async (password: string) => {
 export const updateHeroBackground = async (heroImage: string, heroVideo: string) => {
   const settingsDoc = doc(db, 'settings', 'site');
   await setDoc(settingsDoc, { heroImage, heroVideo }, { merge: true });
+};
+
+export const updateUpiId = async (upiId: string) => {
+  const settingsDoc = doc(db, 'settings', 'site');
+  await setDoc(settingsDoc, { upiId }, { merge: true });
 };
 
 export const getDefaultSettings = () => DEFAULT_SETTINGS;

@@ -461,7 +461,7 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
                   onClick={() => finalizeBooking(paymentMethod)}
                   className="w-full bg-slate-800 text-white py-4 rounded-xl font-bold tracking-widest hover:bg-slate-700 transition-all active:scale-[0.98] shadow-xl"
                 >
-                  {paymentMethod === 'UPI' ? 'I HAVE PAID' : 'CHAT & CONFIRM'}
+                  {paymentMethod === 'UPI' ? 'CONFIRM BOOKING' : 'CHAT & CONFIRM'}
                 </button>
               </div>
             </div>

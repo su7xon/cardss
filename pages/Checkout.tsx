@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../services/firebase';
 import { Product, SiteSettings } from '../types';
 import { addOrder, subscribeToSettings, getDefaultSettings } from '../services/databaseService';
+import { sendOrderNotification } from '../services/emailService';
 import { openPaymentModal } from '../services/razorpayService';
 
 interface CartItem {
@@ -110,6 +111,18 @@ const Checkout: React.FC = () => {
                 total: cartTotal,
                 paymentMethod: checkoutForm.paymentMethod,
                 status: 'Pending'
+            });
+
+            // Send Email Notification
+            await sendOrderNotification({
+                customerName: checkoutForm.name,
+                email: user?.email || '', // Use logged-in user email
+                phone: checkoutForm.phone,
+                address: checkoutForm.address,
+                pincode: checkoutForm.pincode,
+                items: orderItems,
+                total: cartTotal,
+                paymentMethod: checkoutForm.paymentMethod
             });
 
             if (checkoutForm.paymentMethod === 'WhatsApp') {

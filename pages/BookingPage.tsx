@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Booking, Service, Testimonial } from '../types';
-import { addBooking, addTestimonial } from '../services/databaseService';
+import { addBooking, addTestimonial, subscribeToSettings, getDefaultSettings } from '../services/databaseService';
 import { sendBookingNotification } from '../services/emailService';
 
 interface BookingPageProps {
@@ -14,6 +14,11 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [upiId, setUpiId] = useState<string>(getDefaultSettings().upiId || 'pooja.gupta639783@okhdfcbank');
+
+  // Payment State
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'WhatsApp'>('UPI');
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewForm, setReviewForm] = useState({ name: '', text: '', rating: 5 });
@@ -38,6 +43,14 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
         price: services[0].price
       }));
     }
+
+    const unsubscribe = subscribeToSettings((settings) => {
+      if (settings.upiId) {
+        setUpiId(settings.upiId);
+      }
+    });
+
+    return () => unsubscribe();
   }, [services]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,7 +78,13 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
       return;
     }
 
+    // Open Payment Modal instead of direct submission
+    setShowPaymentModal(true);
+  };
+
+  const finalizeBooking = async (method: 'UPI' | 'WhatsApp') => {
     setIsSubmitting(true);
+    setShowPaymentModal(false);
 
     try {
       const isTarot = formData.service.includes('Tarot');
@@ -78,7 +97,8 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
         price: formData.price,
         date: formData.date,
         time: formData.time,
-        status: 'Pending'
+        status: 'Pending',
+        paymentMethod: method
       };
 
       if (isTarot) {
@@ -90,9 +110,19 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
       }
 
       await addBooking(bookingData);
-
-      // Send Email Notification
       await sendBookingNotification(bookingData);
+
+      if (method === 'WhatsApp') {
+        const message = encodeURIComponent(
+          `✨ *New Booking Request*\n\n` +
+          `*Client:* ${formData.name}\n` +
+          `*Service:* ${formData.service}\n` +
+          `*Date:* ${formData.date} at ${formData.time}\n` +
+          `*Price:* ₹${formData.price}\n\n` +
+          `I would like to finalize this booking.`
+        );
+        window.open(`https://wa.me/916397832791?text=${message}`, '_blank');
+      }
 
       setStep(3);
     } catch (error: any) {
@@ -348,7 +378,95 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
           )}
         </div>
 
-        {/* Reviews Section - Hidden during active booking steps */}
+        {/* Payment Selection Modal */}
+        {showPaymentModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl border border-rose-100 relative max-h-[90vh] overflow-y-auto">
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-rose-500 transition-colors"
+              >
+                ✕
+              </button>
+
+              <div className="text-center space-y-6">
+                <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto text-3xl animate-bounce">
+                  💳
+                </div>
+
+                <div>
+                  <h3 className="text-2xl font-mystic text-rose-900 mb-2">Complete Your Booking</h3>
+                  <p className="text-slate-500 text-sm">Amount to Pay: <span className="font-bold text-rose-600">₹{formData.price}</span></p>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Option 1: WhatsApp */}
+                  <div
+                    onClick={() => setPaymentMethod('WhatsApp')}
+                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-4 ${paymentMethod === 'WhatsApp' ? 'border-rose-500 bg-rose-50' : 'border-slate-200 hover:border-rose-300'}`}
+                  >
+                    <span className="text-2xl">📱</span>
+                    <div className="text-left flex-grow">
+                      <h4 className="font-bold text-slate-800">Connect via WhatsApp</h4>
+                      <p className="text-xs text-slate-500">Coordinate directly with Pooja</p>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'WhatsApp' ? 'border-rose-500' : 'border-slate-300'}`}>
+                      {paymentMethod === 'WhatsApp' && <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />}
+                    </div>
+                  </div>
+
+                  {/* Option 2: UPI */}
+                  <div
+                    onClick={() => setPaymentMethod('UPI')}
+                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-4 ${paymentMethod === 'UPI' ? 'border-rose-500 bg-rose-50' : 'border-slate-200 hover:border-rose-300'}`}
+                  >
+                    <span className="text-2xl">💠</span>
+                    <div className="text-left flex-grow">
+                      <h4 className="font-bold text-slate-800">Pay via UPI</h4>
+                      <p className="text-xs text-slate-500">Instant Transfer</p>
+                    </div>
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'UPI' ? 'border-rose-500' : 'border-slate-300'}`}>
+                      {paymentMethod === 'UPI' && <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />}
+                    </div>
+                  </div>
+                </div>
+
+                {paymentMethod === 'UPI' && (
+                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4 animate-fade-in">
+                    <div className="border-t border-slate-200 pt-4">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">UPI ID (VPA)</p>
+                      <div className="flex items-center gap-2 bg-white p-3 rounded-xl border border-rose-100 shadow-sm">
+                        <code className="flex-grow text-rose-700 font-mono text-sm break-all">{upiId}</code>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(upiId);
+                            alert('UPI ID copied!');
+                          }}
+                          className="text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded hover:bg-rose-200 transition-colors"
+                        >
+                          COPY
+                        </button>
+                      </div>
+                    </div>
+                    <a
+                      href={`upi://pay?pa=${upiId}&pn=Divine Guidance Studio&am=${formData.price}&cu=INR`}
+                      className="block w-full bg-rose-600 text-white py-3 rounded-xl font-bold tracking-widest hover:bg-rose-700 transition-all shadow-lg text-sm"
+                    >
+                      OPEN UPI APP
+                    </a>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => finalizeBooking(paymentMethod)}
+                  className="w-full bg-slate-800 text-white py-4 rounded-xl font-bold tracking-widest hover:bg-slate-700 transition-all active:scale-[0.98] shadow-xl"
+                >
+                  {paymentMethod === 'UPI' ? 'I HAVE PAID' : 'CHAT & CONFIRM'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {step === 1 && (
           <div className="mt-24 pt-16 border-t border-rose-100">
             <div className="flex items-center justify-between mb-10">

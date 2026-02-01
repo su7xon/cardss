@@ -114,7 +114,7 @@ const Checkout: React.FC = () => {
             });
 
             // Send Email Notification
-            await sendOrderNotification({
+            const emailResult = await sendOrderNotification({
                 customerName: checkoutForm.name,
                 email: user?.email || '', // Use logged-in user email
                 phone: checkoutForm.phone,
@@ -124,6 +124,12 @@ const Checkout: React.FC = () => {
                 total: cartTotal,
                 paymentMethod: checkoutForm.paymentMethod
             });
+
+            if (!emailResult.success) {
+                alert(`Order placed but email failed: ${emailResult.error}`);
+            } else {
+                // Optional: alert('Order confirmation email sent!');
+            }
 
             if (checkoutForm.paymentMethod === 'WhatsApp') {
                 const orderDetails = cart.map(item =>

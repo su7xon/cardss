@@ -37,9 +37,10 @@ Place: ${bookingData.birthDetails.pob}` : 'N/A'}
 
         await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams, PUBLIC_KEY);
         return { success: true, message: 'Email sent successfully!' };
-    } catch (error) {
+    } catch (error: any) {
         console.error('FAILED...', error);
-        return { success: false, error: error };
+        const errorMessage = error?.text || error?.message || JSON.stringify(error);
+        return { success: false, error: errorMessage };
     }
 };
 
@@ -75,8 +76,9 @@ Pincode: ${orderData.pincode}
 
         await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams, PUBLIC_KEY);
         return { success: true, message: 'Order email sent successfully!' };
-    } catch (error) {
+    } catch (error: any) {
         console.error('Order Email Failed:', error);
-        return { success: false, error: error };
+        const errorMessage = error?.text || error?.message || JSON.stringify(error);
+        return { success: false, error: errorMessage };
     }
 };

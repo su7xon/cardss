@@ -20,8 +20,9 @@ const Checkout: React.FC = () => {
     const [cart, setCart] = useState<CartItem[]>([]);
 
     const [checkoutForm, setCheckoutForm] = useState({
-        name: '',
+        name: user?.displayName || '',
         phone: '',
+        email: user?.email || '', // Pre-fill email
         address: '',
         pincode: '',
         paymentMethod: 'UPI' as 'UPI' | 'COD' | 'WhatsApp'
@@ -56,9 +57,12 @@ const Checkout: React.FC = () => {
         e.preventDefault();
         if (isPlacingOrder) return;
 
-        // Validate all required fields
         if (!checkoutForm.name.trim()) {
             alert('Please enter your name');
+            return;
+        }
+        if (!checkoutForm.email.trim()) {
+            alert('Please enter your email for confirmation');
             return;
         }
         if (!checkoutForm.phone.trim()) {
@@ -79,6 +83,7 @@ const Checkout: React.FC = () => {
                 await signInWithGoogle();
                 const currentUser = auth.currentUser;
                 if (!currentUser) return; // Login cancelled or failed
+                setCheckoutForm(prev => ({ ...prev, email: currentUser.email || prev.email, name: currentUser.displayName || prev.name }));
             } catch (error) {
                 console.error("Login required", error);
                 return;
@@ -104,6 +109,7 @@ const Checkout: React.FC = () => {
             // Normal COD or WhatsApp Flow
             await addOrder({
                 customerName: checkoutForm.name,
+                email: checkoutForm.email, // Save email to DB too
                 phone: checkoutForm.phone,
                 address: checkoutForm.address,
                 pincode: checkoutForm.pincode,
@@ -116,14 +122,13 @@ const Checkout: React.FC = () => {
             // Send Email Notification
             const emailResult = await sendOrderNotification({
                 customerName: checkoutForm.name,
-                email: user?.email || '', // Use logged-in user email
                 phone: checkoutForm.phone,
                 address: checkoutForm.address,
                 pincode: checkoutForm.pincode,
                 items: orderItems,
                 total: cartTotal,
                 paymentMethod: checkoutForm.paymentMethod
-            });
+            }, checkoutForm.email); // Pass user email as recipient
 
             if (!emailResult.success) {
                 alert(`Order placed but email failed: ${emailResult.error}`);

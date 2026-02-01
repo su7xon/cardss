@@ -7,32 +7,29 @@ const SERVICE_ID = 'service_kaojayj';
 const TEMPLATE_ID = 'template_003t25j';
 const PUBLIC_KEY = 'u74OrchUF_0ykBPFa';
 
-export const sendBookingNotification = async (bookingData: any) => {
+export const sendBookingNotification = async (bookingData: any, recipientEmail?: string) => {
     try {
         const templateParams = {
-            to_name: 'Pooja/Admin',
-            to_email: 'poojagupta14021994@gmail.com', // Admin Email from Footer
-            from_name: bookingData.clientName,
-            from_email: bookingData.email,
+            to_name: bookingData.clientName || 'Valued Client',
+            to_email: recipientEmail || 'poojagupta14021994@gmail.com', // Use provided email or fallback to Admin
+            from_name: 'Divine Guidance Studio',
+            from_email: 'poojagupta14021994@gmail.com',
             phone: bookingData.phone,
-            subject: `New Booking: ${bookingData.service}`,
+            subject: `Booking Confirmation: ${bookingData.service}`,
             message: `
-New booking request received:
+Namaste ${bookingData.clientName},
+
+Your booking request has been received!
 
 Service: ${bookingData.service}
 Date: ${bookingData.date}
 Time: ${bookingData.time}
 Price: ${bookingData.price}
 
-Client Details:
-Name: ${bookingData.clientName}
-Email: ${bookingData.email}
-Phone: ${bookingData.phone}
+We will contact you shortly to confirm the details.
 
-Birth Details:
-${bookingData.birthDetails ? `DOB: ${bookingData.birthDetails.dob}
-Time: ${bookingData.birthDetails.tob}
-Place: ${bookingData.birthDetails.pob}` : 'N/A'}
+Blessings,
+Divine Guidance Studio
             `
         };
 
@@ -45,7 +42,7 @@ Place: ${bookingData.birthDetails.pob}` : 'N/A'}
     }
 };
 
-export const sendOrderNotification = async (orderData: any) => {
+export const sendOrderNotification = async (orderData: any, recipientEmail?: string) => {
     try {
         // Format items list for email
         const itemsList = orderData.items.map((item: any) =>
@@ -53,14 +50,16 @@ export const sendOrderNotification = async (orderData: any) => {
         ).join('\n');
 
         const templateParams = {
-            to_name: 'Pooja/Admin',
-            to_email: 'poojagupta14021994@gmail.com', // Admin Email from Footer
-            from_name: orderData.customerName,
-            from_email: orderData.email || 'No Email Provided', // Fallback if guest
+            to_name: orderData.customerName || 'Valued Customer',
+            to_email: recipientEmail || 'poojagupta14021994@gmail.com', // Use provided email or fallback to Admin
+            from_name: 'Divine Guidance Studio',
+            from_email: 'poojagupta14021994@gmail.com',
             phone: orderData.phone,
-            subject: `New Order: ₹${orderData.total}`,
+            subject: `Order Confirmation: ₹${orderData.total}`,
             message: `
-New Order Received!
+Namaste ${orderData.customerName},
+
+Thank you for your order!
 
 Items:
 ${itemsList}
@@ -68,11 +67,14 @@ ${itemsList}
 Total Amount: ₹${orderData.total}
 Payment Method: ${orderData.paymentMethod}
 
-Customer Details:
-Name: ${orderData.customerName}
-Phone: ${orderData.phone}
-Address: ${orderData.address}
-Pincode: ${orderData.pincode}
+Shipping To:
+${orderData.address}
+${orderData.pincode}
+
+We will process your order soon.
+
+Blessings,
+Divine Guidance Studio
             `
         };
 

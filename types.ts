@@ -30,6 +30,7 @@ export interface Booking {
 export interface Order {
   id: string;
   customerName: string;
+  email?: string;
   phone: string;
   address: string;
   pincode: string;

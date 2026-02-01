@@ -11,6 +11,7 @@ export const sendBookingNotification = async (bookingData: any) => {
     try {
         const templateParams = {
             to_name: 'Pooja/Admin',
+            to_email: 'poojagupta14021994@gmail.com', // Admin Email from Footer
             from_name: bookingData.clientName,
             from_email: bookingData.email,
             phone: bookingData.phone,
@@ -53,6 +54,7 @@ export const sendOrderNotification = async (orderData: any) => {
 
         const templateParams = {
             to_name: 'Pooja/Admin',
+            to_email: 'poojagupta14021994@gmail.com', // Admin Email from Footer
             from_name: orderData.customerName,
             from_email: orderData.email || 'No Email Provided', // Fallback if guest
             phone: orderData.phone,

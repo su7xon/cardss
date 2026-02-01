@@ -122,6 +122,8 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
           `I would like to finalize this booking.`
         );
         window.open(`https://wa.me/916397832791?text=${message}`, '_blank');
+      } else if (method === 'UPI') {
+        window.location.href = `upi://pay?pa=${upiId}&pn=Divine Guidance Studio&am=${formData.price}&cu=INR`;
       }
 
       setStep(3);
@@ -448,20 +450,14 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
                         </button>
                       </div>
                     </div>
-                    <a
-                      href={`upi://pay?pa=${upiId}&pn=Divine Guidance Studio&am=${formData.price}&cu=INR`}
-                      className="block w-full bg-rose-600 text-white py-3 rounded-xl font-bold tracking-widest hover:bg-rose-700 transition-all shadow-lg text-sm"
-                    >
-                      OPEN UPI APP
-                    </a>
                   </div>
                 )}
 
                 <button
                   onClick={() => finalizeBooking(paymentMethod)}
-                  className="w-full bg-slate-800 text-white py-4 rounded-xl font-bold tracking-widest hover:bg-slate-700 transition-all active:scale-[0.98] shadow-xl"
+                  className={`w-full text-white py-4 rounded-xl font-bold tracking-widest transition-all active:scale-[0.98] shadow-xl ${paymentMethod === 'UPI' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-slate-800 hover:bg-slate-700'}`}
                 >
-                  {paymentMethod === 'UPI' ? 'CONFIRM BOOKING' : 'CHAT & CONFIRM'}
+                  {paymentMethod === 'UPI' ? 'OPEN UPI APP' : 'CHAT & CONFIRM'}
                 </button>
               </div>
             </div>

@@ -4,6 +4,9 @@ import { Booking, Service, Testimonial } from '../types';
 import { addBooking, addTestimonial, subscribeToSettings, getDefaultSettings } from '../services/databaseService';
 import { sendBookingNotification } from '../services/emailService';
 
+import { auth } from '../services/firebase';
+import { useAuth } from '../contexts/AuthContext';
+
 interface BookingPageProps {
   services: Service[];
   testimonials: Testimonial[];
@@ -11,6 +14,7 @@ interface BookingPageProps {
 }
 
 const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBookingSubmit }) => {
+  const { user, signInWithGoogle } = useAuth();
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,6 +80,23 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
     if (!formData.time) {
       alert('Please select a time');
       return;
+    }
+
+    if (!user) {
+      try {
+        await signInWithGoogle();
+        // If login successful, loop will continue, or re-click might be needed depending on flow.
+        // Ideally, we wait for user state to update.
+        // But since await signInWithGoogle resolves after popup closes and auth state updates (usually),
+        // we can proceed. However, checking 'user' variable again might depend on closure.
+        // It's safer to rely on the fact that if this awaits, the next render will have user.
+        // But to block execution here:
+        const currentUser = auth.currentUser;
+        if (!currentUser) return; // Login cancelled or failed
+      } catch (error) {
+        console.error("Login required", error);
+        return;
+      }
     }
 
     // Open Payment Modal instead of direct submission

@@ -22,6 +22,8 @@ import {
   getDefaultSettings
 } from './services/databaseService';
 
+import { AuthProvider } from './contexts/AuthContext';
+
 const App: React.FC = () => {
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS || []);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -105,53 +107,55 @@ const App: React.FC = () => {
   );
 
   return (
-    <Router>
-      <ScrollToTop />
-      <div className="min-h-screen flex flex-col bg-mystic-gradient">
-        <Navbar onOpenAssist={() => setShowAssist(true)} />
-        <main className="flex-grow pt-16">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-[60vh]">
-              <div className="text-center">
-                <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-rose-200">Loading...</p>
-                {firebaseError && (
-                  <p className="text-red-400 text-sm mt-2 max-w-md">
-                    Firebase Error: {firebaseError}
-                  </p>
-                )}
+    <AuthProvider>
+      <Router>
+        <ScrollToTop />
+        <div className="min-h-screen flex flex-col bg-mystic-gradient">
+          <Navbar onOpenAssist={() => setShowAssist(true)} />
+          <main className="flex-grow pt-16">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-[60vh]">
+                <div className="text-center">
+                  <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-rose-200">Loading...</p>
+                  {firebaseError && (
+                    <p className="text-red-400 text-sm mt-2 max-w-md">
+                      Firebase Error: {firebaseError}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          ) : (
-            <Routes>
-              <Route path="/" element={<Home services={siteSettings.services} serviceCategories={siteSettings.serviceCategories} testimonials={testimonials} aboutContent={siteSettings.about} heroImage={siteSettings.heroImage} heroVideo={siteSettings.heroVideo} />} />
-              <Route path="/shop" element={<Shop products={products} />} />
-              <Route path="/blog" element={<BlogPage />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/book" element={<Navigate to="/booking" />} />
-              <Route path="/booking" element={<BookingPage services={siteSettings.services} testimonials={testimonials} />} />
-              <Route
-                path="/admin/*"
-                element={
-                  <AdminPanel
-                    products={products}
-                    setProducts={setProducts}
-                    bookings={bookings}
-                    setBookings={setBookings}
-                    testimonials={testimonials}
-                    setTestimonials={setTestimonials}
-                  />
-                }
-              />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          )}
-        </main>
-        <FloatingAssistButton />
-        <AssistChat isOpen={showAssist} onClose={() => setShowAssist(false)} />
-        <Footer />
-      </div>
-    </Router>
+            ) : (
+              <Routes>
+                <Route path="/" element={<Home services={siteSettings.services} serviceCategories={siteSettings.serviceCategories} testimonials={testimonials} aboutContent={siteSettings.about} heroImage={siteSettings.heroImage} heroVideo={siteSettings.heroVideo} />} />
+                <Route path="/shop" element={<Shop products={products} />} />
+                <Route path="/blog" element={<BlogPage />} />
+                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/book" element={<Navigate to="/booking" />} />
+                <Route path="/booking" element={<BookingPage services={siteSettings.services} testimonials={testimonials} />} />
+                <Route
+                  path="/admin/*"
+                  element={
+                    <AdminPanel
+                      products={products}
+                      setProducts={setProducts}
+                      bookings={bookings}
+                      setBookings={setBookings}
+                      testimonials={testimonials}
+                      setTestimonials={setTestimonials}
+                    />
+                  }
+                />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            )}
+          </main>
+          <FloatingAssistButton />
+          <AssistChat isOpen={showAssist} onClose={() => setShowAssist(false)} />
+          <Footer />
+        </div>
+      </Router>
+    </AuthProvider>
   );
 };
 

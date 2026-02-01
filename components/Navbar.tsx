@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-
+import { useAuth } from '../contexts/AuthContext';
 
 interface NavbarProps {
   onOpenAssist: () => void;
@@ -10,6 +10,21 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenAssist }) => {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, signInWithGoogle, logout } = useAuth();
+
+  const handleLogin = async () => {
+    try {
+      await signInWithGoogle();
+      setMobileMenuOpen(false);
+    } catch (error) {
+      console.error("Login failed", error);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    setMobileMenuOpen(false);
+  };
 
   return (
     <>
@@ -38,6 +53,22 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenAssist }) => {
               <span>🔮</span> Assist
             </button>
             <Link to="/admin" className="hover:text-rose-600 transition-colors border border-rose-500/30 px-3 py-1 rounded">Admin</Link>
+
+            {user ? (
+              <div className="relative group">
+                <button className="flex items-center gap-2 hover:text-rose-600 transition-colors">
+                  <img src={user.photoURL || '/assets/default-avatar.png'} alt="User" className="w-8 h-8 rounded-full border border-rose-200" />
+                  <span className="max-w-[100px] truncate">{user.displayName?.split(' ')[0]}</span>
+                </button>
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-rose-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right">
+                  <button onClick={handleLogout} className="w-full text-left px-4 py-2 hover:bg-rose-50 text-rose-600 rounded-xl">Logout</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={handleLogin} className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-1.5 rounded-full transition-colors shadow-md">
+                LOGIN
+              </button>
+            )}
           </div>
 
           <button
@@ -63,6 +94,18 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenAssist }) => {
               <span>🔮</span> Assist
             </button>
             <Link to="/admin" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-slate-800 font-bold hover:text-rose-600 border-t border-rose-100 pt-4">Admin Panel</Link>
+
+            {user ? (
+              <div className="pt-4 border-t border-rose-100">
+                <div className="flex items-center gap-3 mb-3">
+                  <img src={user.photoURL || '/assets/default-avatar.png'} alt="User" className="w-10 h-10 rounded-full border border-rose-200" />
+                  <span className="font-bold text-rose-900">{user.displayName}</span>
+                </div>
+                <button onClick={handleLogout} className="w-full text-left py-2 text-red-500 font-bold">LOGOUT</button>
+              </div>
+            ) : (
+              <button onClick={handleLogin} className="w-full bg-rose-500 text-white py-3 rounded-xl font-bold mt-4 shadow-lg">LOGIN WITH GOOGLE</button>
+            )}
           </div>
         )}
       </nav>

@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { auth } from '../services/firebase';
 import { Product, SiteSettings } from '../types';
 import { addOrder, subscribeToSettings, getDefaultSettings } from '../services/databaseService';
 import { openPaymentModal } from '../services/razorpayService';
@@ -13,6 +15,7 @@ interface CartItem {
 const Checkout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const { user, signInWithGoogle } = useAuth();
     const [cart, setCart] = useState<CartItem[]>([]);
 
     const [checkoutForm, setCheckoutForm] = useState({
@@ -68,6 +71,17 @@ const Checkout: React.FC = () => {
         if (!checkoutForm.pincode.trim()) {
             alert('Please enter your pincode');
             return;
+        }
+
+        if (!user) {
+            try {
+                await signInWithGoogle();
+                const currentUser = auth.currentUser;
+                if (!currentUser) return; // Login cancelled or failed
+            } catch (error) {
+                console.error("Login required", error);
+                return;
+            }
         }
 
         setIsPlacingOrder(true);

@@ -11,7 +11,10 @@ export const sendBookingNotification = async (bookingData: any, recipientEmail?:
     try {
         const templateParams = {
             to_name: bookingData.clientName || 'Valued Client',
-            to_email: recipientEmail || 'poojagupta14021994@gmail.com', // Use provided email or fallback to Admin
+            to_email: recipientEmail || 'poojagupta14021994@gmail.com',
+            email: recipientEmail || 'poojagupta14021994@gmail.com', // Added alias
+            reply_to: recipientEmail || 'poojagupta14021994@gmail.com', // Added alias
+            recipient_email: recipientEmail || 'poojagupta14021994@gmail.com', // Added alias
             from_name: 'Divine Guidance Studio',
             from_email: 'poojagupta14021994@gmail.com',
             phone: bookingData.phone,
@@ -51,7 +54,10 @@ export const sendOrderNotification = async (orderData: any, recipientEmail?: str
 
         const templateParams = {
             to_name: orderData.customerName || 'Valued Customer',
-            to_email: recipientEmail || 'poojagupta14021994@gmail.com', // Use provided email or fallback to Admin
+            to_email: recipientEmail || 'poojagupta14021994@gmail.com',
+            email: recipientEmail || 'poojagupta14021994@gmail.com', // Added alias
+            reply_to: recipientEmail || 'poojagupta14021994@gmail.com', // Added alias
+            recipient_email: recipientEmail || 'poojagupta14021994@gmail.com', // Added alias
             from_name: 'Divine Guidance Studio',
             from_email: 'poojagupta14021994@gmail.com',
             phone: orderData.phone,

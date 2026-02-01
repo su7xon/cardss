@@ -71,14 +71,33 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenAssist }) => {
             )}
           </div>
 
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden text-rose-900"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-4 md:hidden">
+            {user ? (
+              <img
+                src={user.photoURL || '/assets/default-avatar.png'}
+                alt="User"
+                className="w-8 h-8 rounded-full border border-rose-200"
+              />
+            ) : (
+              <button
+                onClick={handleLogin}
+                className="text-rose-900 p-1"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A 17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                </svg>
+              </button>
+            )}
+
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="text-rose-900"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {mobileMenuOpen && (
@@ -95,7 +114,7 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenAssist }) => {
             </button>
             <Link to="/admin" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-slate-800 font-bold hover:text-rose-600 border-t border-rose-100 pt-4">Admin Panel</Link>
 
-            {user ? (
+            {user && (
               <div className="pt-4 border-t border-rose-100">
                 <div className="flex items-center gap-3 mb-3">
                   <img src={user.photoURL || '/assets/default-avatar.png'} alt="User" className="w-10 h-10 rounded-full border border-rose-200" />
@@ -103,8 +122,6 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenAssist }) => {
                 </div>
                 <button onClick={handleLogout} className="w-full text-left py-2 text-red-500 font-bold">LOGOUT</button>
               </div>
-            ) : (
-              <button onClick={handleLogin} className="w-full bg-rose-500 text-white py-3 rounded-xl font-bold mt-4 shadow-lg">LOGIN WITH GOOGLE</button>
             )}
           </div>
         )}

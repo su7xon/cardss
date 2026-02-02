@@ -2,6 +2,12 @@
 // @ts-ignore
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || '';
 
+// Detect In-App Browsers (Instagram, Facebook, etc)
+const isInAppBrowser = () => {
+    const ua = navigator.userAgent || navigator.vendor || (window as any).opera;
+    return (ua.indexOf("FBAN") > -1) || (ua.indexOf("FBAV") > -1) || (ua.indexOf("Instagram") > -1);
+};
+
 export const loadRazorpayScript = (): Promise<boolean> => {
     return new Promise((resolve) => {
         if ((window as any).Razorpay) {
@@ -20,7 +26,6 @@ export const loadRazorpayScript = (): Promise<boolean> => {
     });
 };
 
-// Alias compatible with previous usage if needed, but we encourage specific naming
 export const initializeRazorpay = loadRazorpayScript;
 
 export const openPaymentModal = async (
@@ -29,66 +34,71 @@ export const openPaymentModal = async (
     onSuccess: (response: any) => void,
     onFailure: (error: any) => void
 ) => {
-    // 0. Validate Amount
+
+    // 0. Check In-App Browser
+    if (isInAppBrowser()) {
+        alert("⚠️ Payment may fail inside Instagram/Facebook browser.\n\nPlease tap '...' and select 'Open in Chrome/Safari' to pay successfully.");
+        // We continue anyway, but the alert warns them.
+    }
+
+    // 1. Validate Amount
     if (!amount || amount <= 0) {
         alert('Error: Invalid amount to pay.');
-        console.error('Razorpay Error: Invalid Amount', amount);
         onFailure({ reason: 'Invalid Amount' });
         return;
     }
 
-    // 1. Check for Key
+    // 2. Check for Key
     if (!RAZORPAY_KEY_ID) {
         alert('Payment Configuration Error: Razorpay Key ID is missing. Please check your .env file or Netlify settings.');
-        console.error('Razorpay Error: VITE_RAZORPAY_KEY_ID is missing');
         onFailure({ reason: 'Configuration Error: Missing Key' });
         return;
     }
 
-    // 2. Load SDK if needed
-    const isLoaded = await initializeRazorpay();
+    // 3. Load SDK
+    const isLoaded = await loadRazorpayScript();
     if (!isLoaded) {
-        alert('Payment Error: Failed to load Razorpay SDK. Please check your internet connection and try again.');
-        console.error('Razorpay SDK failed to load');
+        alert('Payment Error: Failed to load Razorpay SDK. Please check your internet connection.');
         onFailure({ reason: 'SDK Load Failed' });
         return;
     }
 
-    console.log('Razorpay Init:', { amount, orderData, hasKey: !!RAZORPAY_KEY_ID });
+    console.log('Razorpay Init:', { amount, hasKey: !!RAZORPAY_KEY_ID });
 
-    // 3. Open Modal
+    // 4. Open Modal (Minimal Config for Stability)
     const options = {
         key: RAZORPAY_KEY_ID,
-        amount: Math.round(amount * 100), // Ensure integer paise
+        amount: Math.round(amount * 100),
         currency: 'INR',
         name: 'Divine Guidance Studio',
         description: orderData.desc || 'Order Payment',
-        image: 'https://cdn-icons-png.flaticon.com/512/3062/3062634.png', // Use a reliable public CDN image to avoid 404 issues on local/mobile
+        // image: Removed to prevent mobile loading issues
         handler: function (response: any) {
             console.log('Razorpay Success:', response);
             onSuccess(response);
         },
         prefill: {
-            name: orderData.name,
-            email: orderData.email || '',
-            contact: orderData.contact ? orderData.contact.replace(/\s+/g, '') : '', // Sanitize contact number
-        },
-        notes: {
-            address: 'Divine Guidance Studio Online',
+            // Only send contact, removal of email helps avoid validation errors on some devices
+            contact: orderData.contact ? orderData.contact.replace(/\D/g, '') : '',
+            // email: orderData.email || '', // Commented out to test stability
         },
         theme: {
-            color: '#F43F5E', // Use Uppercase HEX just in case
+            color: '#F43F5E',
         },
-        // Remove 'modal' ondismiss handler for now as it might be triggering prematurely on mobile
+        modal: {
+            ondismiss: function () {
+                console.log('Razorpay Dismissed');
+                onFailure({ reason: 'Payment Cancelled by User' });
+            }
+        },
         retry: {
-            enabled: false // Disable retry to see if it simplifies the flow
+            enabled: false
         }
     };
 
     try {
         const paymentObject = new (window as any).Razorpay(options);
 
-        // Add specific error handling for open()
         paymentObject.on('payment.failed', function (response: any) {
             console.error('Payment Failed Event:', response.error);
             alert('Payment Failed: ' + response.error.description);

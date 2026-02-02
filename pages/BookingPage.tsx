@@ -6,6 +6,7 @@ import { sendBookingNotification } from '../services/emailService';
 
 import { auth } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { openPaymentModal } from '../services/razorpayService';
 
 interface BookingPageProps {
   services: Service[];
@@ -52,6 +53,11 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
       if (settings.upiId) {
         setUpiId(settings.upiId);
       }
+    });
+
+    // Pre-load Razorpay SDK
+    import('../services/razorpayService').then(({ loadRazorpayScript }) => {
+      loadRazorpayScript().catch(err => console.error('Failed to preload Razorpay', err));
     });
 
     return () => unsubscribe();
@@ -107,57 +113,89 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
     setIsSubmitting(true);
     setShowPaymentModal(false);
 
-    try {
-      const isTarot = formData.service.includes('Tarot');
+    // Prepare Booking Data
+    const isTarot = formData.service.includes('Tarot');
+    const bookingData: any = {
+      clientName: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      service: formData.service,
+      price: formData.price,
+      date: formData.date,
+      time: formData.time,
+      status: 'Pending',
+      paymentMethod: method
+    };
 
-      const bookingData: any = {
-        clientName: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        service: formData.service,
-        price: formData.price,
-        date: formData.date,
-        time: formData.time,
-        status: 'Pending',
-        paymentMethod: method
+    if (isTarot) {
+      bookingData.birthDetails = {
+        dob: formData.dob || 'Not Provided',
+        tob: formData.tob || 'Not Provided',
+        pob: formData.pob || 'Not Provided'
       };
+    }
 
-      if (isTarot) {
-        bookingData.birthDetails = {
-          dob: formData.dob || 'Not Provided',
-          tob: formData.tob || 'Not Provided',
-          pob: formData.pob || 'Not Provided'
-        };
+    const processBooking = async (status: 'Pending' | 'Paid', transactionId?: string) => {
+      try {
+        bookingData.status = status;
+        if (transactionId) bookingData.transactionId = transactionId;
+
+        await addBooking(bookingData);
+
+        // Send Email Notification
+        await sendBookingNotification({
+          ...bookingData,
+          email: user?.email || formData.email || bookingData.email
+        }, formData.email || user?.email);
+
+        if (method === 'WhatsApp') {
+          const message = encodeURIComponent(
+            `✨ *New Booking Request*\n\n` +
+            `*Client:* ${formData.name}\n` +
+            `*Service:* ${formData.service}\n` +
+            `*Date:* ${formData.date} at ${formData.time}\n` +
+            `*Price:* ₹${formData.price}\n\n` +
+            `I would like to finalize this booking.`
+          );
+          window.open(`https://wa.me/916397832791?text=${message}`, '_blank');
+        } else if (method === 'UPI') {
+          // For Razorpay, we don't need manual redirect, success modal handles it
+        }
+
+        setStep(3);
+      } catch (error: any) {
+        console.error('Error submitting booking:', error);
+        alert('Failed to submit booking: ' + (error?.message || error));
+      } finally {
+        setIsSubmitting(false);
       }
+    };
 
-      await addBooking(bookingData);
-
-      // Send Email Notification
-      await sendBookingNotification({
-        ...bookingData,
-        email: user?.email || formData.email || bookingData.email
-      }, formData.email || user?.email); // Pass email as recipient
-
-      if (method === 'WhatsApp') {
-        const message = encodeURIComponent(
-          `✨ *New Booking Request*\n\n` +
-          `*Client:* ${formData.name}\n` +
-          `*Service:* ${formData.service}\n` +
-          `*Date:* ${formData.date} at ${formData.time}\n` +
-          `*Price:* ₹${formData.price}\n\n` +
-          `I would like to finalize this booking.`
-        );
-        window.open(`https://wa.me/916397832791?text=${message}`, '_blank');
-      } else if (method === 'UPI') {
-        window.location.href = `upi://pay?pa=${upiId}&pn=Divine Guidance Studio&am=${formData.price}&cu=INR`;
-      }
-
-      setStep(3);
-    } catch (error: any) {
-      console.error('Error submitting booking:', error);
-      alert('Failed to submit booking: ' + (error?.message || error));
-    } finally {
-      setIsSubmitting(false);
+    if (method === 'UPI') {
+      // Trigger Razorpay
+      const cleanPhone = formData.phone.replace(/\D/g, '');
+      await openPaymentModal(
+        formData.price,
+        {
+          name: formData.name,
+          email: formData.email,
+          contact: cleanPhone,
+          desc: `Booking: ${formData.service}`
+        },
+        async (response: any) => {
+          // Payment Success
+          await processBooking('Paid', response.razorpay_payment_id);
+        },
+        (error: any) => {
+          // Payment Failure
+          console.error('Booking Payment Failed', error);
+          alert('Payment Failed: ' + (error.description || 'Unknown error'));
+          setIsSubmitting(false);
+        }
+      );
+    } else {
+      // WhatsApp Flow (No Payment Reqd Immediately)
+      await processBooking('Pending');
     }
   };
 
@@ -450,8 +488,8 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
                   >
                     <span className="text-2xl">💠</span>
                     <div className="text-left flex-grow">
-                      <h4 className="font-bold text-slate-800">Pay via UPI</h4>
-                      <p className="text-xs text-slate-500">Instant Transfer</p>
+                      <h4 className="font-bold text-slate-800">Pay via UPI / Cards</h4>
+                      <p className="text-xs text-slate-500">Secure Online Payment</p>
                     </div>
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'UPI' ? 'border-rose-500' : 'border-slate-300'}`}>
                       {paymentMethod === 'UPI' && <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />}

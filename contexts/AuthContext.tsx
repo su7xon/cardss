@@ -52,9 +52,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Fallback to Redirect (Essential for Mobile/In-App Browsers)
             try {
                 await signInWithRedirect(auth, provider);
-            } catch (redirectError) {
+            } catch (redirectError: any) {
                 console.error("Redirect login also failed", redirectError);
-                alert("Login failed. Please try opening in Chrome/Safari.");
+                // ALERT WITH SPECIFIC ERROR
+                alert(`Login Failed: ${redirectError.message || redirectError.code}\n\nPlease verify 'Authorized Domains' in Firebase Console.`);
                 throw redirectError;
             }
         }

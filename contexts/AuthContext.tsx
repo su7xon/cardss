@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { User, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../services/firebase';
 
 interface AuthContextType {
@@ -29,13 +29,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setLoading(false);
         });
 
+        // Check for redirect result on mount
+        getRedirectResult(auth).then((result) => {
+            if (result) {
+                console.log("Logged in via redirect", result.user);
+                // No need to set user here, onAuthStateChanged handles it
+            }
+        }).catch((error) => {
+            console.error("Redirect login error", error);
+        });
+
         return () => unsubscribe();
     }, []);
 
     const signInWithGoogle = async () => {
         const provider = new GoogleAuthProvider();
         try {
-            await signInWithPopup(auth, provider);
+            // Use Redirect for better mobile compatibility
+            await signInWithRedirect(auth, provider);
         } catch (error) {
             console.error("Error signing in with Google", error);
             throw error;

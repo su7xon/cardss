@@ -2,7 +2,7 @@
 // This worker is designed to delete all existing caches and force network requests.
 // Use this to recover from "White Screen" issues caused by aggressive caching of stale HTML.
 
-const CLEANUP_VERSION = 'cleanup-v1';
+const CLEANUP_VERSION = 'cleanup-v2-razorpay-fix';
 
 self.addEventListener('install', (event) => {
     console.log('[SW Cleanup] Installing cleanup worker...');

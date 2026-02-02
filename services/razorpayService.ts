@@ -77,11 +77,9 @@ export const openPaymentModal = async (
             console.log('Razorpay Success:', response);
             onSuccess(response);
         },
-        prefill: {
-            // Only send contact, removal of email helps avoid validation errors on some devices
-            contact: orderData.contact ? orderData.contact.replace(/\D/g, '') : '',
-            // email: orderData.email || '', // Commented out to test stability
-        },
+        // prefill: {
+        //    contact: orderData.contact ? orderData.contact.replace(/\D/g, '') : '',
+        // },
         theme: {
             color: '#F43F5E',
         },
@@ -101,7 +99,8 @@ export const openPaymentModal = async (
 
         paymentObject.on('payment.failed', function (response: any) {
             console.error('Payment Failed Event:', response.error);
-            alert('Payment Failed: ' + response.error.description);
+            // DEBUG: Show full error details
+            alert(`Payment Failed Details:\nCode: ${response.error.code}\nReason: ${response.error.reason}\nDesc: ${response.error.description || 'No Description'}\nSource: ${response.error.source}\nStep: ${response.error.step}`);
             onFailure(response.error);
         });
 

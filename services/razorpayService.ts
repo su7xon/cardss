@@ -42,9 +42,9 @@ export const openPaymentModal = async (
     }
 
     // 1. Validate Amount
-    if (!amount || amount <= 0) {
-        alert('Error: Invalid amount to pay.');
-        onFailure({ reason: 'Invalid Amount' });
+    if (!amount || amount <= 0 || isNaN(amount) || !isFinite(amount)) {
+        alert(`Error: Invalid payment amount (₹${amount}). Please clear cart and try again.`);
+        onFailure({ reason: 'Invalid Amount', amount });
         return;
     }
 

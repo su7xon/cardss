@@ -43,6 +43,12 @@ const Checkout: React.FC = () => {
                 setUpiId(settings.upiId);
             }
         });
+
+        // Pre-load Razorpay SDK
+        import('../services/razorpayService').then(({ loadRazorpayScript }) => {
+            loadRazorpayScript().catch(err => console.error('Failed to preload Razorpay', err));
+        });
+
         return () => unsubscribe();
     }, [location, navigate]);
 

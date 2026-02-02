@@ -2,7 +2,7 @@
 // @ts-ignore
 const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || '';
 
-export const initializeRazorpay = (): Promise<boolean> => {
+export const loadRazorpayScript = (): Promise<boolean> => {
     return new Promise((resolve) => {
         if ((window as any).Razorpay) {
             resolve(true);
@@ -19,6 +19,9 @@ export const initializeRazorpay = (): Promise<boolean> => {
         document.body.appendChild(script);
     });
 };
+
+// Alias compatible with previous usage if needed, but we encourage specific naming
+export const initializeRazorpay = loadRazorpayScript;
 
 export const openPaymentModal = async (
     amount: number,

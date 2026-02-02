@@ -25,7 +25,7 @@ const Checkout: React.FC = () => {
         email: user?.email || '', // Pre-fill email
         address: '',
         pincode: '',
-        paymentMethod: 'UPI' as 'UPI' | 'COD' | 'WhatsApp' | 'Razorpay'
+        paymentMethod: 'Razorpay' as 'UPI' | 'COD' | 'WhatsApp' | 'Razorpay'
     });
 
     const [upiId, setUpiId] = useState<string>(getDefaultSettings().upiId || 'pooja.gupta639783@okhdfcbank');
@@ -370,31 +370,33 @@ const Checkout: React.FC = () => {
                                     />
                                 </div>
 
-                                <div className="pt-2">
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Payment Preference</label>
-                                    <div className="grid grid-cols-1 gap-2">
-                                        {['Razorpay', 'UPI', 'COD', 'WhatsApp'].map(method => (
-                                            <label
-                                                key={method}
-                                                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${checkoutForm.paymentMethod === method
-                                                    ? 'bg-rose-50 border-rose-500 ring-1 ring-rose-500'
-                                                    : 'bg-white border-slate-200 hover:border-rose-200'
-                                                    }`}
-                                            >
-                                                <input
-                                                    type="radio"
-                                                    name="payment"
-                                                    className="accent-rose-500 w-4 h-4"
-                                                    checked={checkoutForm.paymentMethod === method}
-                                                    onChange={() => setCheckoutForm({ ...checkoutForm, paymentMethod: method as any })}
-                                                />
-                                                <span className={`font-bold text-sm ${checkoutForm.paymentMethod === method ? 'text-rose-700' : 'text-slate-600'}`}>
-                                                    {method}
-                                                </span>
-                                                {method === 'UPI' && <span className="ml-auto text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">FASTEST</span>}
-                                            </label>
-                                        ))}
-                                    </div>
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Payment Preference</label>
+                                <div className="grid grid-cols-1 gap-2">
+                                    {[
+                                        { id: 'Razorpay', label: 'UPI / Cards / Netbanking', badge: 'SECURE' },
+                                        { id: 'COD', label: 'Cash on Delivery', badge: '' },
+                                        { id: 'WhatsApp', label: 'WhatsApp Order', badge: '' }
+                                    ].map(method => (
+                                        <label
+                                            key={method.id}
+                                            className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${checkoutForm.paymentMethod === (method.id as any)
+                                                ? 'bg-rose-50 border-rose-500 ring-1 ring-rose-500'
+                                                : 'bg-white border-slate-200 hover:border-rose-200'
+                                                }`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="payment"
+                                                className="accent-rose-500 w-4 h-4"
+                                                checked={checkoutForm.paymentMethod === method.id}
+                                                onChange={() => setCheckoutForm({ ...checkoutForm, paymentMethod: method.id as any })}
+                                            />
+                                            <span className={`font-bold text-sm ${checkoutForm.paymentMethod === method.id ? 'text-rose-700' : 'text-slate-600'}`}>
+                                                {method.label}
+                                            </span>
+                                            {method.badge && <span className="ml-auto text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold">{method.badge}</span>}
+                                        </label>
+                                    ))}
                                 </div>
 
                                 {/* Mobile Sticky Button Placeholder (for spacing) */}

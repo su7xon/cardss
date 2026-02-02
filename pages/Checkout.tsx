@@ -25,7 +25,7 @@ const Checkout: React.FC = () => {
         email: user?.email || '', // Pre-fill email
         address: '',
         pincode: '',
-        paymentMethod: 'UPI' as 'UPI' | 'COD' | 'WhatsApp'
+        paymentMethod: 'UPI' as 'UPI' | 'COD' | 'WhatsApp' | 'Razorpay'
     });
 
     const [upiId, setUpiId] = useState<string>(getDefaultSettings().upiId || 'pooja.gupta639783@okhdfcbank');
@@ -104,6 +104,63 @@ const Checkout: React.FC = () => {
                 // Trigger Manual UPI Modal
                 setShowUpiModal(true);
                 return;
+            }
+
+            if (checkoutForm.paymentMethod === 'Razorpay') {
+                // Trigger Razorpay Modal
+                await openPaymentModal(
+                    cartTotal,
+                    {
+                        name: checkoutForm.name,
+                        email: checkoutForm.email,
+                        contact: checkoutForm.phone,
+                        desc: `Order for ${cart.length} items`
+                    },
+                    async (response: any) => {
+                        // Success Handler
+                        try {
+                            await addOrder({
+                                customerName: checkoutForm.name,
+                                email: checkoutForm.email,
+                                phone: checkoutForm.phone,
+                                address: checkoutForm.address,
+                                pincode: checkoutForm.pincode,
+                                items: orderItems,
+                                total: cartTotal,
+                                paymentMethod: 'Razorpay',
+                                status: 'Paid', // Mark as Paid
+                                transactionId: response.razorpay_payment_id
+                            });
+
+                            // Send Email
+                            await sendOrderNotification({
+                                customerName: checkoutForm.name,
+                                phone: checkoutForm.phone,
+                                address: checkoutForm.address,
+                                pincode: checkoutForm.pincode,
+                                items: orderItems,
+                                total: cartTotal,
+                                paymentMethod: 'Razorpay (Paid)'
+                            }, checkoutForm.email);
+
+                            setCart([]);
+                            localStorage.removeItem('cart');
+                            setShowSuccessModal(true);
+                        } catch (err) {
+                            console.error('Post-payment order save failed', err);
+                            alert('Payment successful but order save failed. Please contact support.');
+                        } finally {
+                            setIsPlacingOrder(false);
+                        }
+                    },
+                    (error: any) => {
+                        // Failure Handler
+                        console.error('Payment Failed', error);
+                        alert('Payment Failed: ' + (error.description || error.reason || 'Unknown error'));
+                        setIsPlacingOrder(false);
+                    }
+                );
+                return; // Stop here, wait for callback
             }
 
             // Normal COD or WhatsApp Flow
@@ -316,7 +373,7 @@ const Checkout: React.FC = () => {
                                 <div className="pt-2">
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block mb-2">Payment Preference</label>
                                     <div className="grid grid-cols-1 gap-2">
-                                        {['UPI', 'COD', 'WhatsApp'].map(method => (
+                                        {['Razorpay', 'UPI', 'COD', 'WhatsApp'].map(method => (
                                             <label
                                                 key={method}
                                                 className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${checkoutForm.paymentMethod === method

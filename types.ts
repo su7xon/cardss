@@ -41,7 +41,7 @@ export interface Order {
     price: number
   }[];
   total: number;
-  paymentMethod: 'UPI' | 'COD' | 'WhatsApp' | 'Prepaid (Razorpay)';
+  paymentMethod: 'UPI' | 'COD' | 'WhatsApp' | 'Razorpay';
   status: 'Pending' | 'Completed' | 'Cancelled' | 'Paid';
   transactionId?: string;
   createdAt: any; // Timestamp
@@ -113,4 +113,10 @@ export enum AdminView {
   APPOINTMENTS = 'APPOINTMENTS',
   MODERATION = 'MODERATION',
   SETTINGS = 'SETTINGS'
+}
+
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
 }

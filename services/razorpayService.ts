@@ -1,7 +1,5 @@
-
-// Replace with your actual Key ID from Razorpay Dashboard
-// For testing, use "Test Key" mode keys
-const RAZORPAY_KEY_ID = 'YOUR_RAZORPAY_KEY_ID';
+// Razorpay Key ID from Environment Variables
+const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID || '';
 
 export const initializeRazorpay = (): Promise<boolean> => {
     return new Promise((resolve) => {

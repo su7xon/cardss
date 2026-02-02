@@ -579,10 +579,6 @@ const Checkout: React.FC = () => {
                     </div>
                 </div>
             )}
-            {/* Debug Info (Temporary) */}
-            <div className="fixed bottom-0 right-0 bg-black/80 text-white text-[10px] p-1 z-50 pointer-events-none opacity-50">
-                Key: {import.meta.env.VITE_RAZORPAY_KEY_ID ? 'Set' : 'Missing'} | Total: {cartTotal}
-            </div>
         </div>
     );
 };

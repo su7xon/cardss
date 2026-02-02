@@ -107,14 +107,22 @@ const Checkout: React.FC = () => {
             }
 
             if (checkoutForm.paymentMethod === 'Razorpay') {
+                if (checkoutForm.phone.length < 10) {
+                    alert('Please enter a valid phone number');
+                    setIsPlacingOrder(false);
+                    return;
+                }
+
                 // Trigger Razorpay Modal
+                const cleanPhone = checkoutForm.phone.replace(/\D/g, ''); // Remove non-digits
+
                 await openPaymentModal(
                     cartTotal,
                     {
-                        name: checkoutForm.name,
-                        email: checkoutForm.email,
-                        contact: checkoutForm.phone,
-                        desc: `Order for ${cart.length} items`
+                        name: checkoutForm.name.trim(),
+                        email: checkoutForm.email.trim(),
+                        contact: cleanPhone,
+                        desc: `Divine Guidance Order (${cart.length} items)`
                     },
                     async (response: any) => {
                         // Success Handler

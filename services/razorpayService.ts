@@ -60,7 +60,7 @@ export const openPaymentModal = async (
         currency: 'INR',
         name: 'Divine Guidance Studio',
         description: orderData.desc || 'Order Payment',
-        image: '/icons/icon-192x192.png',
+        image: 'https://cdn-icons-png.flaticon.com/512/3062/3062634.png', // Use a reliable public CDN image to avoid 404 issues on local/mobile
         handler: function (response: any) {
             console.log('Razorpay Success:', response);
             onSuccess(response);
@@ -68,24 +68,30 @@ export const openPaymentModal = async (
         prefill: {
             name: orderData.name,
             email: orderData.email || '',
-            contact: orderData.contact,
+            contact: orderData.contact ? orderData.contact.replace(/\s+/g, '') : '', // Sanitize contact number
         },
         notes: {
             address: 'Divine Guidance Studio Online',
         },
         theme: {
-            color: '#f43f5e',
+            color: '#F43F5E', // Use Uppercase HEX just in case
         },
-        modal: {
-            ondismiss: function () {
-                console.log('Razorpay Dismissed');
-                onFailure({ reason: 'Payment Cancelled by User' });
-            }
+        // Remove 'modal' ondismiss handler for now as it might be triggering prematurely on mobile
+        retry: {
+            enabled: false // Disable retry to see if it simplifies the flow
         }
     };
 
     try {
         const paymentObject = new (window as any).Razorpay(options);
+
+        // Add specific error handling for open()
+        paymentObject.on('payment.failed', function (response: any) {
+            console.error('Payment Failed Event:', response.error);
+            alert('Payment Failed: ' + response.error.description);
+            onFailure(response.error);
+        });
+
         paymentObject.open();
     } catch (err: any) {
         console.error('Razorpay Initialization Failed:', err);

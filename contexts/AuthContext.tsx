@@ -45,11 +45,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const signInWithGoogle = async () => {
         const provider = new GoogleAuthProvider();
         try {
-            // Use Redirect for better mobile compatibility
-            await signInWithRedirect(auth, provider);
-        } catch (error) {
-            console.error("Error signing in with Google", error);
-            throw error;
+            // Try Popup first (Better UX for Desktop)
+            await signInWithPopup(auth, provider);
+        } catch (error: any) {
+            console.error("Popup login failed, trying redirect...", error);
+            // Fallback to Redirect (Essential for Mobile/In-App Browsers)
+            try {
+                await signInWithRedirect(auth, provider);
+            } catch (redirectError) {
+                console.error("Redirect login also failed", redirectError);
+                alert("Login failed. Please try opening in Chrome/Safari.");
+                throw redirectError;
+            }
         }
     };
 

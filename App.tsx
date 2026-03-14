@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
@@ -127,7 +126,7 @@ const App: React.FC = () => {
               </div>
             ) : (
               <Routes>
-                <Route path="/" element={<Home services={siteSettings.services} serviceCategories={siteSettings.serviceCategories} testimonials={testimonials} aboutContent={siteSettings.about} heroImage={siteSettings.heroImage} heroVideo={siteSettings.heroVideo} />} />
+                <Route path="/" element={<Home services={siteSettings.services} serviceCategories={siteSettings.serviceCategories} testimonials={testimonials} aboutContent={siteSettings.about} heroImage={siteSettings.heroImage} heroVideo={siteSettings.heroVideo} heroContent={siteSettings.heroContent} />} />
                 <Route path="/shop" element={<Shop products={products} />} />
                 <Route path="/blog" element={<BlogPage />} />
                 <Route path="/checkout" element={<Checkout />} />
@@ -152,7 +151,7 @@ const App: React.FC = () => {
           </main>
           <FloatingAssistButton />
           <AssistChat isOpen={showAssist} onClose={() => setShowAssist(false)} />
-          <Footer />
+          <Footer footerSettings={siteSettings.footer} />
         </div>
       </Router>
     </AuthProvider>

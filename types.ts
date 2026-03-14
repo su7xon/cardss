@@ -93,6 +93,28 @@ export interface ServiceCategory {
   description?: string;
 }
 
+export interface FooterSettings {
+  aboutTitle: string;
+  aboutDescription: string;
+  servicesTitle: string;
+  services: string[];
+  contactTitle: string;
+  instagramUrl: string;
+  youtubeUrl: string;
+  whatsappUrl: string;
+  address: string;
+  email: string;
+  phone: string;
+}
+
+export interface HeroContent {
+  heading: string;
+  subheading: string;
+  subtitle?: string; // New field
+  primaryButtonText: string;
+  secondaryButtonText: string;
+}
+
 export interface SiteSettings {
   about: AboutContent;
   services: Service[];
@@ -101,7 +123,9 @@ export interface SiteSettings {
   adminPassword?: string;
   heroImage?: string;
   heroVideo?: string;
+  heroContent: HeroContent;
   upiId?: string;
+  footer?: FooterSettings;
 }
 
 export enum AdminView {

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Product, Booking, Testimonial, AdminView, SiteSettings, Service, AboutContent, ServiceCategory } from '../types';
+import { Product, Booking, Testimonial, AdminView, SiteSettings, Service, AboutContent, ServiceCategory, HeroContent, FooterSettings } from '../types';
 import {
   updateBooking as updateBookingInDB,
   deleteBooking as deleteBookingFromDB,
@@ -16,6 +16,8 @@ import {
   updateProductCategories,
   updateAdminPassword,
   updateHeroBackground,
+  updateHeroContent,
+  updateFooterSettings,
   getDefaultSettings,
   subscribeToOrders,
   updateOrderStatus,
@@ -23,8 +25,7 @@ import {
   subscribeToBlogs,
   addBlog,
   updateBlog,
-  deleteBlog,
-  updateUpiId
+  deleteBlog
 } from '../services/databaseService';
 import { uploadImage } from '../services/imageUpload';
 import Toast from '../components/Toast';
@@ -93,6 +94,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(getDefaultSettings());
   const [aboutForm, setAboutForm] = useState<AboutContent>(getDefaultSettings().about);
+  const [heroTextForm, setHeroTextForm] = useState<HeroContent>(getDefaultSettings().heroContent);
+  const [footerForm, setFooterForm] = useState<FooterSettings>(getDefaultSettings().footer!);
   const [servicesForm, setServicesForm] = useState<Service[]>(getDefaultSettings().services);
   // @ts-ignore - Supressing temporary type error during migration
   const [categoriesForm, setCategoriesForm] = useState<ServiceCategory[]>(getDefaultSettings().serviceCategories);
@@ -121,11 +124,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [heroVideoFile, setHeroVideoFile] = useState<File | null>(null);
   const heroVideoInputRef = useRef<HTMLInputElement>(null);
   const [heroVideoName, setHeroVideoName] = useState<string | null>(null);
-
-
-
-  // UPI ID State
-  const [upiIdForm, setUpiIdForm] = useState('');
 
   // Password change state
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
@@ -169,6 +167,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
       // PARANOID UI UPDATES: Ensure we never set empty arrays if defaults exist
       const defaultSettings = getDefaultSettings();
+      setHeroTextForm({
+        ...defaultSettings.heroContent,
+        ...(settings.heroContent || {})
+      });
+      setFooterForm({
+        ...defaultSettings.footer!,
+        ...(settings.footer || {})
+      });
       setCategoriesForm(
         (settings.serviceCategories && settings.serviceCategories.length > 0)
           ? settings.serviceCategories
@@ -179,7 +185,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           ? settings.productCategories
           : defaultSettings.productCategories
       );
-      setUpiIdForm(settings.upiId || 'pooja.gupta639783@okhdfcbank');
     });
 
     const unsubscribeOrders = subscribeToOrders((data) => {
@@ -459,20 +464,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setIsChangingPassword(false);
     }
 
-  };
-
-  const handleUpiIdSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSettingsSaving(true);
-    try {
-      await updateUpiId(upiIdForm);
-      showToast('UPI ID updated successfully!', 'success');
-    } catch (error) {
-      console.error('Error updating UPI ID:', error);
-      showToast('Failed to update UPI ID', 'error');
-    } finally {
-      setSettingsSaving(false);
-    }
   };
 
   const handleCategorySubmit = async (e: React.FormEvent) => {
@@ -1728,38 +1719,201 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             </div>
 
-
-            {/* Payment Settings */}
             <div className="bg-white p-6 rounded-2xl border border-rose-100 shadow-sm">
               <h4 className="text-lg font-mystic text-rose-800 mb-6 flex items-center gap-2">
-                <span>💳</span> Payment Settings
+                <span>🎯</span> Hero Text Section (Home Banner)
               </h4>
+
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">UPI ID (for Direct Payments)</label>
-                  <div className="flex gap-4">
+                  <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Main Heading</label>
+                  <input
+                    type="text"
+                    value={heroTextForm.heading}
+                    onChange={(e) => setHeroTextForm({ ...heroTextForm, heading: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900"
+                    placeholder="e.g., Healing • Guidance • Tarot"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Subheading</label>
+                  <textarea
+                    rows={3}
+                    value={heroTextForm.subheading}
+                    onChange={(e) => setHeroTextForm({ ...heroTextForm, subheading: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none resize-none text-slate-900"
+                    placeholder="Short message under heading..."
+                  />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Primary Button Text</label>
                     <input
                       type="text"
-                      value={upiIdForm}
-                      onChange={(e) => setUpiIdForm(e.target.value)}
-                      className="flex-grow bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900 font-mono"
-                      placeholder="example@okhdfcbank"
+                      value={heroTextForm.primaryButtonText}
+                      onChange={(e) => setHeroTextForm({ ...heroTextForm, primaryButtonText: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900"
+                      placeholder="e.g., BOOK A READING"
                     />
-                    <button
-                      onClick={handleUpiIdSave}
-                      disabled={settingsSaving}
-                      className="bg-slate-800 text-white px-6 py-3 rounded-xl font-bold tracking-widest hover:bg-slate-700 transition-colors disabled:opacity-50 whitespace-nowrap"
-                    >
-                      SAVE ID
-                    </button>
                   </div>
-                  <p className="text-xs text-slate-400">
-                    This ID will be used when customers select "UPI" at checkout.
-                  </p>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Secondary Button Text</label>
+                    <input
+                      type="text"
+                      value={heroTextForm.secondaryButtonText}
+                      onChange={(e) => setHeroTextForm({ ...heroTextForm, secondaryButtonText: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900"
+                      placeholder="e.g., EXPLORE CRYSTALS"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
+            <div className="bg-white p-6 rounded-2xl border border-rose-100 shadow-sm">
+              <h4 className="text-lg font-mystic text-rose-800 mb-6 flex items-center gap-2">
+                <span>🦶</span> Footer Section
+              </h4>
+
+              <div className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">About Title</label>
+                    <input
+                      type="text"
+                      value={footerForm.aboutTitle}
+                      onChange={(e) => setFooterForm({ ...footerForm, aboutTitle: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Services Title</label>
+                    <input
+                      type="text"
+                      value={footerForm.servicesTitle}
+                      onChange={(e) => setFooterForm({ ...footerForm, servicesTitle: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">About Description</label>
+                  <textarea
+                    rows={4}
+                    value={footerForm.aboutDescription}
+                    onChange={(e) => setFooterForm({ ...footerForm, aboutDescription: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none resize-none text-slate-900"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Services List (one per line)</label>
+                  <textarea
+                    rows={4}
+                    value={footerForm.services.join('\n')}
+                    onChange={(e) => setFooterForm({ ...footerForm, services: e.target.value.split('\n').map((item) => item.trim()).filter(Boolean) })}
+                    className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none resize-none text-slate-900"
+                  />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Contact Title</label>
+                    <input
+                      type="text"
+                      value={footerForm.contactTitle}
+                      onChange={(e) => setFooterForm({ ...footerForm, contactTitle: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Email</label>
+                    <input
+                      type="text"
+                      value={footerForm.email}
+                      onChange={(e) => setFooterForm({ ...footerForm, email: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Phone</label>
+                    <input
+                      type="text"
+                      value={footerForm.phone}
+                      onChange={(e) => setFooterForm({ ...footerForm, phone: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Instagram URL</label>
+                    <input
+                      type="url"
+                      value={footerForm.instagramUrl}
+                      onChange={(e) => setFooterForm({ ...footerForm, instagramUrl: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">YouTube URL</label>
+                    <input
+                      type="url"
+                      value={footerForm.youtubeUrl}
+                      onChange={(e) => setFooterForm({ ...footerForm, youtubeUrl: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">WhatsApp URL</label>
+                    <input
+                      type="url"
+                      value={footerForm.whatsappUrl}
+                      onChange={(e) => setFooterForm({ ...footerForm, whatsappUrl: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Address Line 1</label>
+                    <input
+                      type="text"
+                      value={footerForm.addressLine1}
+                      onChange={(e) => setFooterForm({ ...footerForm, addressLine1: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Address Line 2</label>
+                    <input
+                      type="text"
+                      value={footerForm.addressLine2}
+                      onChange={(e) => setFooterForm({ ...footerForm, addressLine2: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Address Line 3</label>
+                    <input
+                      type="text"
+                      value={footerForm.addressLine3}
+                      onChange={(e) => setFooterForm({ ...footerForm, addressLine3: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
             {/* Change Password */}
             <div className="bg-white p-6 rounded-2xl border border-rose-100 shadow-sm">
               <h4 className="text-lg font-mystic text-rose-800 mb-6 flex items-center gap-2">
@@ -1829,6 +1983,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     await updateServiceCategories(categoriesForm);
                     await updateProductCategories(productCategoriesForm);
                     await updateHeroBackground(heroImage, heroVideo);
+                    await updateHeroContent(heroTextForm);
+                    await updateFooterSettings(footerForm);
 
                     showToast('All settings saved successfully');
                     setHeroImageFile(null);

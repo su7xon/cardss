@@ -22,6 +22,7 @@ const Shop: React.FC<ShopProps> = ({ products }) => {
   const [showCart, setShowCart] = useState(false);
   const [addedToCart, setAddedToCart] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const addToCart = (product: Product) => {
     if (product.stock <= 0) {
@@ -76,9 +77,12 @@ const Shop: React.FC<ShopProps> = ({ products }) => {
     setIsLoadingWisdom(false);
   };
 
-  const filteredProducts = products.filter(p =>
-    selectedCategory === 'All' || p.category === selectedCategory
-  );
+  const filteredProducts = products.filter(p => {
+    const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          p.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-4 md:py-12">
@@ -100,6 +104,31 @@ const Shop: React.FC<ShopProps> = ({ products }) => {
             )}
           </button>
         </div>
+      </div>
+
+      <div className="relative mb-6 md:mb-10">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <svg className="h-5 w-5 text-rose-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <input
+          type="text"
+          placeholder="Search for crystals (e.g., Amethyst, Healing...)"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-12 pr-4 py-3 md:py-4 bg-white/50 backdrop-blur-md border border-rose-100 rounded-2xl md:rounded-3xl text-rose-900 placeholder-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-200 focus:border-rose-300 transition-all shadow-sm text-sm md:text-base"
+        />
+        {searchQuery && (
+          <button 
+            onClick={() => setSearchQuery('')}
+            className="absolute inset-y-0 right-0 pr-4 flex items-center text-rose-300 hover:text-rose-500 transition-colors"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className="flex gap-2 md:gap-4 overflow-x-auto pb-4 mb-4 md:mb-8 no-scrollbar">

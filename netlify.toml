@@ -3,6 +3,24 @@
   publish = "dist"
 
 [[redirects]]
+  from = "http://divineguidancestudio.in/*"
+  to = "https://divineguidancestudio.in/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "http://www.divineguidancestudio.in/*"
+  to = "https://divineguidancestudio.in/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.divineguidancestudio.in/*"
+  to = "https://divineguidancestudio.in/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

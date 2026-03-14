@@ -279,6 +279,27 @@ const DEFAULT_SETTINGS: SiteSettings = {
   adminPassword: 'pooja.gupta001',
   heroImage: '/assets/hero_bg_final_2.png',
   heroVideo: undefined,
+  heroContent: {
+    heading: 'Healing • Guidance • Tarot',
+    subheading: 'Personalized tarot reading, healing guidance\n& authentic crystals for balance, clarity and growth.',
+    primaryButtonText: 'BOOK A READING',
+    secondaryButtonText: 'EXPLORE CRYSTALS'
+  },
+  footer: {
+    aboutTitle: 'Pooja Gupta',
+    aboutDescription: 'Helping you navigate the cosmos through the wisdom of stars and the healing energy of crystals. Based in Bhondsi, Gurgaon, serving globally.',
+    servicesTitle: 'Services',
+    services: ['Birth Chart Reading', 'Crystal Healing', 'Tarot Insights', 'Vastu Consultation'],
+    contactTitle: 'Contact',
+    instagramUrl: 'https://www.instagram.com/divine_guidance_studio?utm_source=qr&igsh=MW9nbmVsOXdzczA5ZQ==',
+    youtubeUrl: 'https://youtube.com/@divineguidancestudio?si=1eDWWCfxg2uZbEBf',
+    whatsappUrl: 'https://wa.me/916397832791',
+    addressLine1: 'Block A, Gali No. 2, Rayan Enclave',
+    addressLine2: 'Near Shiv Mandir, Bhondsi',
+    addressLine3: 'Gurgaon, Haryana - 122102',
+    email: 'poojagupta14021994@gmail.com',
+    phone: '+91 6397832791'
+  },
   upiId: 'pooja.gupta639783@okhdfcbank'
 };
 
@@ -313,6 +334,8 @@ export const subscribeToSettings = (callback: (settings: SiteSettings) => void) 
         ...DEFAULT_SETTINGS,
         ...data,
         about: { ...DEFAULT_SETTINGS.about, ...(data.about || {}) },
+        heroContent: { ...DEFAULT_SETTINGS.heroContent, ...(data.heroContent || {}) },
+        footer: { ...DEFAULT_SETTINGS.footer, ...(data.footer || {}) },
         services: validServices,
         serviceCategories: validServiceCats,
         productCategories: validProductCats,
@@ -354,6 +377,16 @@ export const updateAdminPassword = async (password: string) => {
 export const updateHeroBackground = async (heroImage: string, heroVideo: string) => {
   const settingsDoc = doc(db, 'settings', 'site');
   await setDoc(settingsDoc, { heroImage, heroVideo }, { merge: true });
+};
+
+export const updateHeroContent = async (heroContent: SiteSettings['heroContent']) => {
+  const settingsDoc = doc(db, 'settings', 'site');
+  await setDoc(settingsDoc, { heroContent }, { merge: true });
+};
+
+export const updateFooterSettings = async (footer: NonNullable<SiteSettings['footer']>) => {
+  const settingsDoc = doc(db, 'settings', 'site');
+  await setDoc(settingsDoc, { footer }, { merge: true });
 };
 
 export const updateUpiId = async (upiId: string) => {

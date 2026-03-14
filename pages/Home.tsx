@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Testimonial, AboutContent, Service, ServiceCategory } from '../types';
+import { Testimonial, AboutContent, Service, ServiceCategory, HeroContent } from '../types';
 
 interface HomeProps {
   services: Service[];
@@ -9,9 +9,10 @@ interface HomeProps {
   aboutContent: AboutContent;
   heroImage?: string;
   heroVideo?: string;
+  heroContent?: HeroContent;
 }
 
-const Home: React.FC<HomeProps> = ({ services, serviceCategories, testimonials, aboutContent, heroImage, heroVideo }) => {
+const Home: React.FC<HomeProps> = ({ services, serviceCategories, testimonials, aboutContent, heroImage, heroVideo, heroContent }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPaused, setIsPaused] = useState(false);
@@ -53,6 +54,14 @@ const Home: React.FC<HomeProps> = ({ services, serviceCategories, testimonials, 
     { id: '3', name: 'Special Packages', icon: '✨', description: 'Curated bundles of healing sessions and tools for complete transformation.' }
   ];
 
+  const displayHeroContent: HeroContent = {
+    heading: heroContent?.heading || 'Healing • Guidance • Tarot',
+    subheading: heroContent?.subheading || 'Personalized tarot reading, healing guidance\n& authentic crystals for balance, clarity and growth.',
+    subtitle: heroContent?.subtitle || '',
+    primaryButtonText: heroContent?.primaryButtonText || 'BOOK A READING',
+    secondaryButtonText: heroContent?.secondaryButtonText || 'EXPLORE CRYSTALS'
+  };
+
   return (
     <div className="space-y-2 md:space-y-12 pb-8 md:pb-16">
       <section
@@ -79,18 +88,24 @@ const Home: React.FC<HomeProps> = ({ services, serviceCategories, testimonials, 
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 z-10">
           <div className="max-w-[95%] sm:max-w-3xl w-full p-2 md:p-0">
             <h1 className="text-lg sm:text-xl md:text-5xl font-mystic font-bold text-white mb-2 tracking-tighter animate-fade-in drop-shadow-lg whitespace-nowrap">
-              Healing • Guidance • Tarot
+              {displayHeroContent.heading}
             </h1>
 
-            <p className="text-[10px] md:text-xl text-white mb-6 md:mb-10 font-semibold leading-relaxed drop-shadow-lg max-w-2xl mx-auto">
-              Personalized tarot reading, healing guidance <br /> & authentic crystals for balance, clarity and growth.
+            {displayHeroContent.subtitle && (
+              <p className="text-sm md:text-2xl text-rose-200 mt-2 mb-4 font-mystic tracking-widest animate-fade-in drop-shadow-md">
+                {displayHeroContent.subtitle}
+              </p>
+            )}
+
+            <p className="text-[10px] md:text-xl text-white mb-6 md:mb-10 font-semibold leading-relaxed drop-shadow-lg max-w-2xl mx-auto whitespace-pre-line">
+              {displayHeroContent.subheading}
             </p>
             <div className="flex flex-col md:flex-row gap-2 md:gap-4 justify-center items-center">
               <Link to="/booking" className="w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white px-6 md:px-8 py-2.5 md:py-4 rounded-full font-bold text-[10px] md:text-base tracking-widest transition-all shadow-lg active:scale-95">
-                BOOK A READING
+                {displayHeroContent.primaryButtonText}
               </Link>
               <Link to="/shop" className="w-full sm:w-auto bg-white border border-rose-500 text-rose-800 hover:bg-rose-50 px-6 md:px-8 py-2.5 md:py-4 rounded-full font-bold text-[10px] md:text-base tracking-widest transition-all shadow-md">
-                EXPLORE CRYSTALS
+                {displayHeroContent.secondaryButtonText}
               </Link>
             </div>
           </div>

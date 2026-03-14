@@ -25,18 +25,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            console.log("Auth state changed:", currentUser?.email);
             setUser(currentUser);
+            // Only set loading to false if we're not expecting a redirect result
+            // though onAuthStateChanged usually fires after getRedirectResult
             setLoading(false);
         });
 
-        // Check for redirect result on mount
+        // Check for redirect result on mount (essential for mobile in-app browsers)
+        setLoading(true);
         getRedirectResult(auth).then((result) => {
             if (result) {
-                console.log("Logged in via redirect", result.user);
-                // No need to set user here, onAuthStateChanged handles it
+                console.log("Logged in via redirect successfully:", result.user.email);
             }
+            setLoading(false);
         }).catch((error) => {
-            console.error("Redirect login error", error);
+            console.error("Redirect login error:", error);
+            setLoading(false);
         });
 
         return () => unsubscribe();

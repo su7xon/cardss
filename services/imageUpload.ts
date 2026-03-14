@@ -1,26 +1,19 @@
-// Free image upload using ImgBB API
-// Get your free API key from: https://api.imgbb.com/
-
-const IMGBB_API_KEY = 'cfbd883aa25ac914efa79a2395b76175';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from './firebase';
 
 export const uploadImage = async (file: File): Promise<string> => {
-  const formData = new FormData();
-  formData.append('image', file);
+  const timestamp = Date.now();
+  // Sanitize file name to avoid issues with special characters
+  const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const fileName = `uploads/${timestamp}_${safeFileName}`;
+  const storageRef = ref(storage, fileName);
 
-  const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-    method: 'POST',
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    console.error('ImgBB Upload Error:', errorBody);
-    throw new Error(`Failed to upload image: ${response.statusText}`);
+  try {
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+    return downloadURL;
+  } catch (error) {
+    console.error('Firebase Storage Upload Error:', error);
+    throw new Error('Failed to upload image. Please try again.');
   }
-
-  const data = await response.json();
-  if (!data.success) {
-    throw new Error(data.error?.message || 'ImgBB upload failed');
-  }
-  return data.data.url;
 };

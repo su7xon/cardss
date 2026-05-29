@@ -16,7 +16,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './firebase';
-import { Product, Booking, Testimonial, SiteSettings, Service, AboutContent, Order, BlogPost } from '../types';
+import { Product, Booking, Testimonial, SiteSettings, Service, AboutContent, Order, BlogPost, CourseEbook } from '../types';
 
 // Collection references
 const productsCollection = collection(db, 'products');
@@ -24,6 +24,35 @@ const bookingsCollection = collection(db, 'bookings');
 const testimonialsCollection = collection(db, 'testimonials');
 const ordersCollection = collection(db, 'orders');
 const blogsCollection = collection(db, 'blogs');
+const coursesEbooksCollection = collection(db, 'coursesEbooks');
+const usersCollection = collection(db, 'users');
+
+// ============ USER PROFILES ============
+
+export const getUserProfile = async (userId: string) => {
+  try {
+    const docRef = doc(db, 'users', userId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as import('../types').UserProfile;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
+    return null;
+  }
+};
+
+export const updateUserProfile = async (userId: string, data: Partial<import('../types').UserProfile>) => {
+  try {
+    const docRef = doc(db, 'users', userId);
+    await setDoc(docRef, { ...data, updatedAt: serverTimestamp() }, { merge: true });
+    return true;
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    return false;
+  }
+};
 
 // ============ IMAGE UPLOAD ============
 
@@ -36,6 +65,22 @@ export const uploadProductImage = async (file: File): Promise<string> => {
   const downloadURL = await getDownloadURL(storageRef);
 
   return downloadURL;
+};
+
+export const uploadCoursePdf = async (file: File): Promise<string> => {
+  const timestamp = Date.now();
+  const fileName = `courses-ebooks/pdfs/${timestamp}_${file.name}`;
+  const storageRef = ref(storage, fileName);
+  await uploadBytes(storageRef, file);
+  return getDownloadURL(storageRef);
+};
+
+export const uploadCourseCover = async (file: File): Promise<string> => {
+  const timestamp = Date.now();
+  const fileName = `courses-ebooks/covers/${timestamp}_${file.name}`;
+  const storageRef = ref(storage, fileName);
+  await uploadBytes(storageRef, file);
+  return getDownloadURL(storageRef);
 };
 
 // ============ PRODUCTS ============
@@ -51,13 +96,18 @@ export const subscribeToProducts = (callback: (products: Product[]) => void) => 
 };
 
 export const addProduct = async (product: Omit<Product, 'id'>) => {
-  const docRef = await addDoc(productsCollection, product);
+  const docRef = await addDoc(productsCollection, {
+    ...product,
+    createdAt: serverTimestamp()
+  });
   return docRef.id;
 };
 
 export const updateProduct = async (id: string, updates: Partial<Product>) => {
   const docRef = doc(db, 'products', id);
-  await updateDoc(docRef, updates);
+  // Use setDoc with merge so edits also work for fallback/imported products
+  // that may not yet exist as Firestore documents.
+  await setDoc(docRef, updates, { merge: true });
 };
 
 export const deleteProduct = async (id: string) => {
@@ -157,6 +207,20 @@ export const deleteOrder = async (id: string) => {
   await deleteDoc(docRef);
 };
 
+export const getUserOrders = async (email: string) => {
+  try {
+    const q = query(ordersCollection, where('email', '==', email), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Order[];
+  } catch (error) {
+    console.error("Error fetching user orders:", error);
+    return [];
+  }
+};
+
 // ============ BLOGS ============
 
 export const subscribeToBlogs = (callback: (blogs: BlogPost[]) => void) => {
@@ -191,6 +255,40 @@ export const deleteBlog = async (id: string) => {
   await deleteDoc(docRef);
 };
 
+// ============ COURSES & EBOOKS ============
+
+export const subscribeToCoursesEbooks = (callback: (items: CourseEbook[]) => void) => {
+  const q = query(coursesEbooksCollection, orderBy('createdAt', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    const items = snapshot.docs.map(d => ({
+      id: d.id,
+      ...d.data()
+    })) as CourseEbook[];
+    callback(items);
+  }, (error) => {
+    console.error('Courses/Ebooks subscription error:', error);
+    callback([]);
+  });
+};
+
+export const addCourseEbook = async (item: Omit<CourseEbook, 'id' | 'createdAt'>) => {
+  const docRef = await addDoc(coursesEbooksCollection, {
+    ...item,
+    createdAt: serverTimestamp()
+  });
+  return docRef.id;
+};
+
+export const updateCourseEbook = async (id: string, updates: Partial<CourseEbook>) => {
+  const docRef = doc(db, 'coursesEbooks', id);
+  await setDoc(docRef, updates, { merge: true });
+};
+
+export const deleteCourseEbook = async (id: string) => {
+  const docRef = doc(db, 'coursesEbooks', id);
+  await deleteDoc(docRef);
+};
+
 // ============ SITE SETTINGS ============
 
 const DEFAULT_SETTINGS: SiteSettings = {
@@ -208,30 +306,33 @@ const DEFAULT_SETTINGS: SiteSettings = {
   services: [
     {
       id: '1',
-      name: 'Mini Guidance Reading',
+      name: 'Chat Tarot Consultation',
       category: 'Tarot Guidance',
-      price: 599,
-      duration: 'SHORT',
-      icon: '🗒️',
-      description: '1 specific question, Short & focused clarity.'
+      price: 555,
+      duration: 'CHAT',
+      icon: '',
+      image: '',
+      description: 'Detailed tarot reading + numerology guidance + remedies share'
     },
     {
       id: '2',
-      name: 'Detailed Tarot Reading',
+      name: 'Call Tarot Consultation',
       category: 'Tarot Guidance',
-      price: 1499,
-      duration: 'STANDARD',
-      icon: '🔮',
-      description: 'Career / Life guidance, In-depth insights.'
+      price: 999,
+      duration: 'CALL',
+      icon: '',
+      image: '',
+      description: 'Detailed tarot reading + numerology guidance + remedies + follow up support via chat'
     },
     {
       id: '3',
-      name: 'Complete Life Guidance Reading',
+      name: 'Video Tarot Consultation',
       category: 'Tarot Guidance',
-      price: 2999,
-      duration: 'EXTENDED',
-      icon: '✨',
-      description: 'Multiple areas, Deep clarity & direction.'
+      price: 1999,
+      duration: 'VIDEO',
+      icon: '',
+      image: '',
+      description: 'Detailed tarot reading + numerology guidance + unlimited questions + remedies follow up support via chat'
     },
     {
       id: '4',
@@ -239,7 +340,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
       category: 'Counseling & Healing',
       price: 1499,
       duration: '45-60 MINS',
-      icon: '🫂',
+      icon: '',
       description: 'Stress, confusion, emotional support.'
     },
     {
@@ -248,17 +349,8 @@ const DEFAULT_SETTINGS: SiteSettings = {
       category: 'Counseling & Healing',
       price: 2499,
       duration: 'STANDARD',
-      icon: '🌿',
+      icon: '',
       description: 'Energy balancing & guidance, Personalized support.'
-    },
-    {
-      id: '6',
-      name: 'Monthly Healing Support Plan',
-      category: 'Special Package',
-      price: 5999,
-      duration: '3 SESSIONS',
-      icon: '🗓️',
-      description: 'Continuous guidance & follow-up.'
     },
     {
       id: '7',
@@ -266,18 +358,64 @@ const DEFAULT_SETTINGS: SiteSettings = {
       category: 'Special Package',
       price: 2999,
       duration: 'COMBO',
-      icon: '🦋',
+      icon: '',
       description: 'Tarot insights + counseling support. Best for clarity & healing.'
+    },
+    {
+      id: '8',
+      name: 'Emotional & Mental Wellbeing',
+      category: 'Counseling & Healing',
+      price: 599,
+      duration: '45 MINS',
+      icon: '',
+      description: 'Stress, anxiety, emotional clarity & mental peace.'
+    },
+    {
+      id: '9',
+      name: 'Relationship Counselling',
+      category: 'Counseling & Healing',
+      price: 699,
+      duration: '60 MINS',
+      icon: '',
+      description: 'Love, relationships, partner dynamics & harmony.'
+    },
+    {
+      id: '10',
+      name: 'Family Guidance',
+      category: 'Counseling & Healing',
+      price: 599,
+      duration: '45 MINS',
+      icon: '',
+      description: 'Family conflicts, parent-child issues, household harmony.'
+    },
+    {
+      id: '11',
+      name: 'Career Guidance',
+      category: 'Counseling & Healing',
+      price: 699,
+      duration: '60 MINS',
+      icon: '',
+      description: 'Job clarity, career transitions, professional growth.'
+    },
+    {
+      id: '12',
+      name: 'Personal Growth & Life Direction',
+      category: 'Counseling & Healing',
+      price: 899,
+      duration: '90 MINS',
+      icon: '',
+      description: 'Life purpose, personal growth, spiritual direction & transformation.'
     }
   ],
   serviceCategories: [
-    { id: '1', name: 'Tarot Guidance', icon: '🔮', description: 'Deep insights into your past, present, and future through ancient wisdom.' },
-    { id: '2', name: 'Counseling & Healing', icon: '🕊️', description: 'Compassionate spiritual counseling and energy healing for inner peace.' },
-    { id: '3', name: 'Special Package', icon: '✨', description: 'Curated bundles of healing sessions and tools for complete transformation.' }
+    { id: '1', name: 'Tarot Guidance', icon: '', description: 'Deep insights into your past, present, and future through ancient wisdom.' },
+    { id: '2', name: 'Counseling & Healing', icon: '', description: 'Compassionate spiritual counseling and energy healing for inner peace.' },
+    { id: '3', name: 'Special Package', icon: '', description: 'Curated bundles of healing sessions and tools for complete transformation.' },
+    { id: '4', name: 'Crystal Combo', icon: '', description: 'Powerful crystal combinations curated for specific intentions and energy work.' }
   ],
   productCategories: ['Crystal', 'Jewelry', 'Aura', 'Bracelet', 'Raw Stone', 'Charged Stone'],
   adminPassword: 'pooja.gupta001',
-  heroImage: '/assets/hero_bg_final_2.png',
+  heroImage: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=1200',
   heroVideo: undefined,
   heroContent: {
     heading: 'Healing • Guidance • Tarot',
@@ -294,13 +432,52 @@ const DEFAULT_SETTINGS: SiteSettings = {
     instagramUrl: 'https://www.instagram.com/divine_guidance_studio?utm_source=qr&igsh=MW9nbmVsOXdzczA5ZQ==',
     youtubeUrl: 'https://youtube.com/@divineguidancestudio?si=1eDWWCfxg2uZbEBf',
     whatsappUrl: 'https://wa.me/916397832791',
+    address: 'Block A, Gali No. 2, Rayan Enclave, Near Shiv Mandir, Bhondsi, Gurgaon, Haryana - 122102',
     addressLine1: 'Block A, Gali No. 2, Rayan Enclave',
     addressLine2: 'Near Shiv Mandir, Bhondsi',
     addressLine3: 'Gurgaon, Haryana - 122102',
     email: 'poojagupta14021994@gmail.com',
     phone: '+91 6397832791'
   },
-  upiId: 'pooja.gupta639783@okhdfcbank'
+  upiId: 'pooja.gupta639783@okhdfcbank',
+  crystalCombos: [
+    {
+      id: 'combo1',
+      title: 'Protection Combo',
+      subtitle: 'Black Tourmaline + Red Jasper',
+      description: 'Ultimate shield against negativity',
+      image: '',
+      gradient: 'linear-gradient(135deg, #d97706 0%, #f59e0b 55%, #fbbf24 100%)',
+      accentColor: 'amber',
+      price: 1499,
+      originalPrice: 1999,
+      tag: 'BESTSELLER'
+    },
+    {
+      id: 'combo2',
+      title: 'Spiritual Growth Combo',
+      subtitle: 'Amethyst + Clear Quartz',
+      description: 'Amplify intuition & clarity',
+      image: '',
+      gradient: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 55%, #c084fc 100%)',
+      accentColor: 'purple',
+      price: 1299,
+      originalPrice: 1799,
+      tag: 'NEW'
+    },
+    {
+      id: 'combo3',
+      title: 'Love & Abundance Combo',
+      subtitle: 'Rose Quartz + Pyrite',
+      description: 'Attract love & prosperity',
+      image: '',
+      gradient: 'linear-gradient(135deg, #e11d48 0%, #f43f5e 55%, #fb7185 100%)',
+      accentColor: 'rose',
+      price: 1399,
+      originalPrice: 1899,
+      tag: 'POPULAR'
+    }
+  ]
 };
 
 export const subscribeToSettings = (callback: (settings: SiteSettings) => void) => {
@@ -309,8 +486,12 @@ export const subscribeToSettings = (callback: (settings: SiteSettings) => void) 
     if (snapshot.exists()) {
       const data = snapshot.data() as any;
 
-      // PARANOID MERGE: Ensure arrays are actually non-empty arrays
-      const validServices = Array.isArray(data.services) && data.services.length > 0 ? data.services : DEFAULT_SETTINGS.services;
+      // Respect Firestore services exactly as saved.
+      // Do not auto-add DEFAULT services, otherwise deleted services reappear.
+      let validServices = DEFAULT_SETTINGS.services;
+      if (Array.isArray(data.services)) {
+        validServices = data.services;
+      }
 
       // MIGRATION: Handle legacy string[] categories
       let validServiceCats = DEFAULT_SETTINGS.serviceCategories;
@@ -320,7 +501,7 @@ export const subscribeToSettings = (callback: (settings: SiteSettings) => void) 
           validServiceCats = (data.serviceCategories as string[]).map((name, i) => ({
             id: Date.now().toString() + i,
             name,
-            icon: '✨', // Default icon
+            icon: '', // Default icon
             description: ''
           }));
         } else {
@@ -339,6 +520,7 @@ export const subscribeToSettings = (callback: (settings: SiteSettings) => void) 
         services: validServices,
         serviceCategories: validServiceCats,
         productCategories: validProductCats,
+        crystalCombos: Array.isArray(data.crystalCombos) && data.crystalCombos.length > 0 ? data.crystalCombos : DEFAULT_SETTINGS.crystalCombos,
       };
       callback(merged);
     } else {
@@ -355,13 +537,43 @@ export const updateAboutContent = async (about: AboutContent) => {
 };
 
 export const updateServices = async (services: Service[]) => {
+  // Sanitize services to ensure all fields are present
+  const sanitizedServices = services.map(service => ({
+    id: service.id || '',
+    name: service.name || '',
+    category: service.category || '',
+    price: Number(service.price) || 0,
+    duration: service.duration || '',
+    icon: service.icon || '',
+    image: service.image || '',
+    description: service.description || '',
+    chatPrice: Number(service.chatPrice) || 0,
+    callPrice: Number(service.callPrice) || 0,
+    videoPrice: Number(service.videoPrice) || 0
+  }));
+  
+  console.log('Saving services to database:', sanitizedServices);
+  
   const settingsDoc = doc(db, 'settings', 'site');
-  await setDoc(settingsDoc, { services }, { merge: true });
+  await setDoc(settingsDoc, { services: sanitizedServices }, { merge: true });
 };
 
 export const updateServiceCategories = async (categories: import('../types').ServiceCategory[]) => {
+  // Ensure no undefined values - Firestore rejects them
+  const sanitizedCategories = categories.map(cat => ({
+    id: cat.id || '',
+    name: cat.name || '',
+    icon: cat.icon || '',
+    image: cat.image || '',
+    description: cat.description || '',
+    features: cat.features || '',
+    chatPrice: cat.chatPrice || 0,
+    callPrice: cat.callPrice || 0,
+    videoPrice: cat.videoPrice || 0
+  }));
+  
   const settingsDoc = doc(db, 'settings', 'site');
-  await setDoc(settingsDoc, { serviceCategories: categories }, { merge: true });
+  await setDoc(settingsDoc, { serviceCategories: sanitizedCategories }, { merge: true });
 };
 
 export const updateProductCategories = async (categories: string[]) => {
@@ -394,32 +606,42 @@ export const updateUpiId = async (upiId: string) => {
   await setDoc(settingsDoc, { upiId }, { merge: true });
 };
 
+export const updateCrystalCombos = async (crystalCombos: import('../types').CrystalCombo[]) => {
+  const settingsDoc = doc(db, 'settings', 'site');
+  await setDoc(settingsDoc, { crystalCombos }, { merge: true });
+};
+
 export const getDefaultSettings = () => DEFAULT_SETTINGS;
 
 // ============ SEED DATA (for initial setup) ============
 
 export const seedInitialData = async (products: Product[], testimonials: Testimonial[], blogs: BlogPost[]) => {
-  // Check if products already exist
+  // Check if seeding has already been completed before
+  const settingsRef = doc(db, 'settings', 'site');
+  const settingsDoc = await getDoc(settingsRef);
+  const hasSeeded = settingsDoc.exists() && settingsDoc.data()?.seedCompleted === true;
+
+  // Only seed products if NEVER seeded before AND collection is empty
   const existingProducts = await getDocs(productsCollection);
-  if (existingProducts.empty) {
+  if (existingProducts.empty && !hasSeeded) {
     for (const product of products) {
       await setDoc(doc(db, 'products', product.id), product);
     }
     console.log('Seeded initial products');
   }
 
-  // Check if testimonials already exist  
+  // Only seed testimonials if NEVER seeded before AND collection is empty
   const existingTestimonials = await getDocs(testimonialsCollection);
-  if (existingTestimonials.empty && testimonials.length > 0) {
+  if (existingTestimonials.empty && !hasSeeded && testimonials.length > 0) {
     for (const testimonial of testimonials) {
       await setDoc(doc(db, 'testimonials', testimonial.id), testimonial);
     }
     console.log('Seeded initial testimonials');
   }
 
-  // Check and seed blogs if they don't exist
+  // Only seed blogs if NEVER seeded before AND collection is empty
   const existingBlogs = await getDocs(blogsCollection);
-  if (existingBlogs.empty && blogs.length > 0) {
+  if (existingBlogs.empty && !hasSeeded && blogs.length > 0) {
     for (const blog of blogs) {
       const blogData = {
         ...blog,
@@ -428,5 +650,11 @@ export const seedInitialData = async (products: Product[], testimonials: Testimo
       await setDoc(doc(db, 'blogs', blog.id), blogData);
     }
     console.log('Seeded initial blogs');
+  }
+
+  // Mark seeding as completed (one-time flag)
+  if (!hasSeeded) {
+    await setDoc(settingsRef, { seedCompleted: true }, { merge: true });
+    console.log('Marked seeding as completed');
   }
 };

@@ -1,16 +1,26 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
+import CartDrawer from './CartDrawer';
+import { Home, Store, ShoppingBag, User, Search, X, ChevronRight } from 'lucide-react';
+import { Product, Service } from '../types';
 
 interface NavbarProps {
-  onOpenAssist: () => void;
+  products?: Product[];
+  services?: Service[];
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onOpenAssist }) => {
+const Navbar: React.FC<NavbarProps> = ({ products = [], services = [] }) => {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<{ id: string; name: string; type: 'product' | 'service'; image?: string }[]>([]);
   const { user, signInWithGoogle, logout } = useAuth();
+  const { cartItemCount } = useCart();
 
   const handleLogin = async () => {
     try {
@@ -26,154 +36,279 @@ const Navbar: React.FC<NavbarProps> = ({ onOpenAssist }) => {
     setMobileMenuOpen(false);
   };
 
+  const navLinks = [
+    { to: "/", label: "Home" },
+    { to: "/shop", label: "Shop" },
+    { to: "/blog", label: "Blog" },
+    { to: "/booking", label: "Services" },
+    { to: "/about", label: "About" },
+    { to: "/#contact", label: "Contact" },
+  ];
+
+  const isActive = (path: string) => {
+    if (path === '/' && location.pathname === '/') return true;
+    if (path !== '/' && location.pathname.startsWith(path)) return true;
+    return false;
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (query.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    const lowerQuery = query.toLowerCase();
+    
+    const filteredProducts = products
+      .filter(p => p.name.toLowerCase().includes(lowerQuery) || p.description.toLowerCase().includes(lowerQuery))
+      .slice(0, 5)
+      .map(p => ({ id: p.id, name: p.name, type: 'product' as const, image: p.image }));
+
+    const filteredServices = services
+      .filter(s => s.name.toLowerCase().includes(lowerQuery) || s.description.toLowerCase().includes(lowerQuery))
+      .slice(0, 3)
+      .map(s => ({ id: s.id, name: s.name, type: 'service' as const, image: s.image }));
+
+    setSearchResults([...filteredProducts, ...filteredServices]);
+  };
+
   return (
     <>
-      <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-rose-200/50">
+      <nav className="fixed top-0 w-full z-50 bg-white/95 backdrop-blur-md border-b border-rose-200/50">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2">
-            <img
-              src="/assets/WhatsApp Image 2026-01-11 at 5.22.39 PM.jpeg"
-              alt="Divine Guidance Studio Logo"
-              className="w-10 h-10 rounded-full object-cover shadow-lg rose-gold-glow"
-            />
-            <span className="font-mystic text-xs md:text-xl font-bold tracking-tight md:tracking-widest text-rose-900 whitespace-nowrap">
-              Divine Guidance Studio
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-3 active:scale-95 transition-transform">
+            <div className="relative">
+              <img
+                src="/assets/mystic-logo.png"
+                alt="Shunyethra"
+                className="h-10 md:h-12 w-auto object-contain transition-transform group-hover:scale-110"
+              />
+            </div>
+            <span className="font-mystic text-base sm:text-lg md:text-2xl bg-gradient-to-r from-rose-900 to-rose-700 bg-clip-text text-transparent tracking-widest font-bold">
+              Shunyethra
             </span>
           </Link>
 
-          <div className="hidden md:flex gap-6 text-sm uppercase tracking-widest font-semibold text-slate-600 items-center">
-            <Link to="/" className="hover:text-rose-600 transition-colors">Home</Link>
-            <Link to="/shop" className="text-slate-600 hover:text-rose-500 font-medium transition-colors">SHOP</Link>
-            <Link to="/blog" className="text-slate-600 hover:text-rose-500 font-medium transition-colors">BLOG</Link>
-            <Link to="/booking" className="text-slate-600 hover:text-rose-500 font-medium transition-colors">BOOK</Link>
-            <button
-              onClick={onOpenAssist}
-              className="hover:text-rose-600 transition-colors flex items-center gap-1"
-            >
-              <span>🔮</span> Assist
-            </button>
-            <Link to="/admin" className="hover:text-rose-600 transition-colors border border-rose-500/30 px-3 py-1 rounded">Admin</Link>
-
-            {user ? (
-              <div className="relative group">
-                <button className="flex items-center gap-2 hover:text-rose-600 transition-colors">
-                  <img src={user.photoURL || '/assets/default-avatar.png'} alt="User" className="w-8 h-8 rounded-full border border-rose-200" />
-                  <span className="max-w-[100px] truncate">{user.displayName?.split(' ')[0]}</span>
-                </button>
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-rose-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right">
-                  <button onClick={handleLogout} className="w-full text-left px-4 py-2 hover:bg-rose-50 text-rose-600 rounded-xl">Logout</button>
-                </div>
-              </div>
-            ) : (
-              <button 
-                onClick={handleLogin} 
-                className="bg-white hover:bg-rose-50 text-slate-700 px-4 py-1.5 rounded-full transition-all shadow-sm border border-rose-200 flex items-center gap-2 font-medium"
+          {/* Desktop Navigation */}
+          <div className="hidden lg:flex gap-8 text-sm uppercase tracking-widest font-semibold text-slate-600 items-center">
+            {navLinks.map(link => (
+              <Link 
+                key={link.to} 
+                to={link.to}
+                className="hover:text-rose-600 transition-colors relative group"
               >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  />
-                </svg>
-                Sign in
-              </button>
-            )}
+                {link.label}
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-rose-500 transition-all group-hover:w-full"></span>
+              </Link>
+            ))}
           </div>
 
-          <div className="flex items-center gap-4 md:hidden">
-            {user ? (
-              <img
-                src={user.photoURL || '/assets/default-avatar.png'}
-                alt="User"
-                className="w-8 h-8 rounded-full border border-rose-200"
-              />
-            ) : (
-              <button
-                onClick={handleLogin}
-                className="text-rose-900 p-1"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A 17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                </svg>
-              </button>
-            )}
+          {/* Right Side Icons */}
+          <div className="flex items-center gap-2 md:gap-4">
+            {/* Search */}
+            <button
+              onClick={() => setIsSearchOpen(!isSearchOpen)}
+              className="p-2 text-slate-600 hover:text-rose-600 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 md:w-6 md:h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+              </svg>
+            </button>
 
+            {/* Account (Desktop) */}
+            <Link 
+              to="/account"
+              className="hidden lg:block p-2 text-slate-600 hover:text-rose-600 transition-colors"
+            >
+              <User className="w-5 h-5 md:w-6 md:h-6" />
+            </Link>
+
+            {/* Cart - Hidden on Mobile since it's in bottom nav */}
+            <button 
+              onClick={() => setIsCartOpen(true)}
+              className="hidden lg:block relative p-2 text-slate-600 hover:text-rose-600 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 md:w-6 md:h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+              </svg>
+              {cartItemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm">
+                  {cartItemCount}
+                </span>
+              )}
+            </button>
+
+            {/* Mobile Menu Toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="text-rose-900"
+              className="lg:hidden p-2 text-slate-600"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
-              </svg>
+              {mobileMenuOpen ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+              )}
             </button>
           </div>
         </div>
 
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-white/95 backdrop-blur-md border-t border-rose-200/50 py-4 px-4 space-y-3 animate-fade-in shadow-xl">
-            <Link to="/" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-slate-600 hover:text-rose-600">Home</Link>
-            <Link to="/shop" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-lg font-bold text-slate-700 hover:text-rose-500 transition-colors">SHOP</Link>
-            <Link to="/blog" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-lg font-bold text-slate-700 hover:text-rose-500 transition-colors">BLOG</Link>
-            <Link to="/booking" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-lg font-bold text-slate-700 hover:text-rose-500 transition-colors">BOOK</Link>
-            <button
-              onClick={() => { onOpenAssist(); setMobileMenuOpen(false); }}
-              className="block py-2 text-slate-600 hover:text-rose-600 flex items-center gap-1"
-            >
-              <span>🔮</span> Assist
-            </button>
-            <Link to="/admin" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-slate-800 font-bold hover:text-rose-600 border-t border-rose-100 pt-4">Admin Panel</Link>
-
-            {!user && (
-              <button 
-                onClick={handleLogin} 
-                className="w-full mt-4 bg-rose-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg"
-              >
-                <svg className="w-5 h-5 bg-white rounded-full p-0.5" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.66l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  />
-                </svg>
-                Sign in with Google
-              </button>
-            )}
-
-            {user && (
-              <div className="pt-4 border-t border-rose-100">
-                <div className="flex items-center gap-3 mb-3">
-                  <img src={user.photoURL || '/assets/default-avatar.png'} alt="User" className="w-10 h-10 rounded-full border border-rose-200" />
-                  <span className="font-bold text-rose-900">{user.displayName}</span>
-                </div>
-                <button onClick={handleLogout} className="w-full text-left py-2 text-red-500 font-bold">LOGOUT</button>
+        {/* Search Bar */}
+        {isSearchOpen && (
+          <div className="absolute top-full left-0 right-0 bg-white border-b border-rose-200 p-4 shadow-lg animate-fade-in z-50">
+            <div className="max-w-2xl mx-auto relative">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  placeholder="Search crystals, services..."
+                  className="w-full bg-rose-50 border border-rose-200 rounded-full px-6 py-3 pr-12 outline-none focus:border-rose-500 transition-colors"
+                  autoFocus
+                />
+                <button 
+                  onClick={() => setIsSearchOpen(false)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-            )}
+
+              {/* Search Results Dropdown */}
+              {searchResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-rose-100 overflow-hidden z-[60]">
+                  <div className="py-2">
+                    {searchResults.map((result) => (
+                      <Link
+                        key={`${result.type}-${result.id}`}
+                        to={result.type === 'product' ? `/product/${result.id}` : '/booking'}
+                        onClick={() => {
+                          setIsSearchOpen(false);
+                          setSearchQuery('');
+                          setSearchResults([]);
+                        }}
+                        className="flex items-center gap-4 px-4 py-3 hover:bg-rose-50 transition-colors group"
+                      >
+                        <div className="w-10 h-10 rounded-lg bg-rose-100 overflow-hidden shrink-0">
+                          {result.image ? (
+                            <img src={result.image} alt={result.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-rose-500">
+                              <Search className="w-5 h-5" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-grow">
+                          <div className="text-sm font-semibold text-slate-900 group-hover:text-rose-600 transition-colors">
+                            {result.name}
+                          </div>
+                          <div className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">
+                            {result.type}
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-rose-400" />
+                      </Link>
+                    ))}
+                  </div>
+                  <div className="bg-rose-50 p-3 text-center">
+                    <Link 
+                      to="/shop" 
+                      onClick={() => setIsSearchOpen(false)}
+                      className="text-xs font-bold text-rose-600 hover:text-rose-700 uppercase tracking-widest"
+                    >
+                      View All Products
+                    </Link>
+                  </div>
+                </div>
+              )}
+              
+              {searchQuery.length >= 2 && searchResults.length === 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-rose-100 p-8 text-center z-[60]">
+                  <p className="text-slate-500">No results found for "{searchQuery}"</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden bg-white/98 backdrop-blur-md border-t border-rose-200/50 py-4 px-4 space-y-1 animate-fade-in shadow-xl">
+            {navLinks.map(link => (
+              <Link
+                key={link.to}
+                to={link.to}
+                onClick={() => setMobileMenuOpen(false)}
+                className="block py-3 px-4 text-slate-700 hover:bg-rose-50 hover:text-rose-600 rounded-xl font-medium transition-colors"
+              >
+                {link.label}
+              </Link>
+            ))}
           </div>
         )}
       </nav>
+
+      {/* Mobile Bottom Navigation */}
+      {!isAdmin && !['/checkout', '/booking'].includes(location.pathname) && (
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-[100] pb-safe">
+          <div className="flex justify-around items-center h-16 px-2">
+            <Link
+              to="/"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex flex-col items-center justify-center w-full h-full transition-colors ${
+                isActive('/') ? 'text-rose-600' : 'text-slate-500 hover:text-rose-600'
+              }`}
+            >
+              <Home className="w-6 h-6 mb-1" strokeWidth={isActive('/') ? 2.5 : 2} />
+              <span className="text-[10px] font-medium tracking-widest">HOME</span>
+            </Link>
+
+            <Link
+              to="/shop"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex flex-col items-center justify-center w-full h-full transition-colors ${
+                isActive('/shop') ? 'text-rose-600' : 'text-slate-500 hover:text-rose-600'
+              }`}
+            >
+              <Store className="w-6 h-6 mb-1" strokeWidth={isActive('/shop') ? 2.5 : 2} />
+              <span className="text-[10px] font-medium tracking-widest">SHOP</span>
+            </Link>
+
+            <button
+              onClick={() => setIsCartOpen(true)}
+              className="flex flex-col items-center justify-center w-full h-full text-slate-500 hover:text-rose-600 transition-colors relative"
+            >
+              <div className="relative mb-1">
+                <ShoppingBag className="w-6 h-6" strokeWidth={2} />
+                {cartItemCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                    {cartItemCount}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] font-medium tracking-widest">CART</span>
+            </button>
+
+            <Link
+              to="/account"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex flex-col items-center justify-center w-full h-full transition-colors ${
+                isActive('/account') ? 'text-rose-600' : 'text-slate-500 hover:text-rose-600'
+              }`}
+            >
+              <User className="w-6 h-6 mb-1" strokeWidth={isActive('/account') ? 2.5 : 2} />
+              <span className="text-[10px] font-medium tracking-widest">ACCOUNT</span>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );
 };

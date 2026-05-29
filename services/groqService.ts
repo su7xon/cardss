@@ -13,7 +13,7 @@ How to talk:
 - Use casual, conversational language
 - Keep responses short and natural (2-3 sentences usually)
 - Don't be overly formal or use bullet points
-- Occasionally use emojis but don't overdo it ✨
+- Keep professional tone and focus on clarity
 - Say things like "Oh!", "Hmm", "Actually", "You know what" to sound human
 - Share opinions and be genuine, not generic
 - If you don't know something, just say so honestly
@@ -28,6 +28,10 @@ My goal is to provide clarity, healing, and guidance. Talk like you're chatting 
 
 export const sendMessage = async (messages: ChatMessage[]): Promise<string> => {
   try {
+    console.log('[Groq] Sending message...');
+    console.log('[Groq] API Key present:', !!GROQ_API_KEY);
+    console.log('[Groq] Message count:', messages.length);
+    
     const response = await fetch(GROQ_API_URL, {
       method: 'POST',
       headers: {
@@ -45,16 +49,18 @@ export const sendMessage = async (messages: ChatMessage[]): Promise<string> => {
       }),
     });
 
+    console.log('[Groq] Response status:', response.status);
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Groq API error response:', errorText);
+      console.error('[Groq] API error response:', response.status, errorText);
       throw new Error(`Groq API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
+    console.log('[Groq] Success:', !!data.choices[0]?.message?.content);
     return data.choices[0]?.message?.content || 'I apologize, I could not generate a response.';
   } catch (error) {
-    console.error('Groq API error:', error);
+    console.error('[Groq] Error:', error instanceof Error ? error.message : String(error));
     throw error;
   }
 };

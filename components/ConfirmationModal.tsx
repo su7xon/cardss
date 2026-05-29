@@ -4,7 +4,7 @@ interface ConfirmationModalProps {
     isOpen: boolean;
     title: string;
     message: string;
-    onConfirm: () => void;
+    onConfirm: () => void | Promise<void>;
     onCancel: () => void;
     isProcessing?: boolean;
 }
@@ -18,6 +18,14 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     isProcessing = false
 }) => {
     if (!isOpen) return null;
+
+    const handleConfirm = async () => {
+        try {
+            await onConfirm();
+        } catch (error) {
+            console.error('ConfirmationModal onConfirm error:', error);
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
@@ -34,7 +42,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                         CANCEL
                     </button>
                     <button
-                        onClick={onConfirm}
+                        onClick={handleConfirm}
                         disabled={isProcessing}
                         className="px-6 py-2 rounded-lg bg-red-500 text-white font-bold tracking-wide hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center gap-2"
                     >

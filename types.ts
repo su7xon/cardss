@@ -1,13 +1,25 @@
+export interface UserProfile {
+  id?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  pincode?: string;
+}
 
 export interface Product {
   id: string;
   name: string;
   price: number;
+  originalPrice?: number;
   description: string;
-  metaphysicalProperties: string;
+  metaphysicalProperties?: string;
   image: string;
   category: string;
-  stock: number;
+  stock?: number;
+  rating?: number;
+  reviews?: number;
+  tag?: string;
 }
 
 export interface Booking {
@@ -65,6 +77,12 @@ export interface Service {
   icon: string;
   image?: string;
   description?: string;
+  chatDescription?: string;
+  callDescription?: string;
+  videoDescription?: string;
+  chatPrice?: number;
+  callPrice?: number;
+  videoPrice?: number;
 }
 
 export interface AboutContent {
@@ -84,6 +102,22 @@ export interface BlogPost {
   slug: string;
 }
 
+export interface CourseEbook {
+  id: string;
+  title: string;
+  description: string;
+  type: 'course' | 'ebook';
+  category: string;
+  pdfUrl: string;
+  coverImage?: string;
+  price: number; // 0 = free
+  author: string;
+  pages?: number;
+  duration?: string; // for courses e.g. "4 hours"
+  isFeatured?: boolean;
+  createdAt: any;
+}
+
 
 export interface ServiceCategory {
   id: string;
@@ -91,6 +125,10 @@ export interface ServiceCategory {
   icon: string;
   image?: string;
   description?: string;
+  features?: string;
+  chatPrice?: number;
+  callPrice?: number;
+  videoPrice?: number;
 }
 
 export interface FooterSettings {
@@ -103,6 +141,9 @@ export interface FooterSettings {
   youtubeUrl: string;
   whatsappUrl: string;
   address: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  addressLine3?: string;
   email: string;
   phone: string;
 }
@@ -113,6 +154,22 @@ export interface HeroContent {
   subtitle?: string; // New field
   primaryButtonText: string;
   secondaryButtonText: string;
+}
+
+export interface CrystalCombo {
+  id: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  fullDescription?: string;
+  image: string;
+  gradient: string;
+  accentColor: string;
+  price: number;
+  originalPrice?: number;
+  tag?: string;
+  benefits?: string[];
+  includedItems?: string[];
 }
 
 export interface SiteSettings {
@@ -126,6 +183,7 @@ export interface SiteSettings {
   heroContent: HeroContent;
   upiId?: string;
   footer?: FooterSettings;
+  crystalCombos?: CrystalCombo[];
 }
 
 export enum AdminView {
@@ -134,6 +192,7 @@ export enum AdminView {
   SERVICES = 'SERVICES',
   ORDERS = 'ORDERS',
   BLOG = 'BLOG',
+  COURSES_EBOOKS = 'COURSES_EBOOKS',
   APPOINTMENTS = 'APPOINTMENTS',
   MODERATION = 'MODERATION',
   SETTINGS = 'SETTINGS'

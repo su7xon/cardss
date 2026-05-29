@@ -47,7 +47,7 @@ const BlogPage: React.FC = () => {
         <div className="bg-slate-50 min-h-screen py-12 px-4">
             <div className="max-w-6xl mx-auto">
                 <div className="text-center mb-16 animate-fade-in">
-                    <h1 className="text-4xl md:text-5xl font-mystic text-rose-900 mb-4 uppercase tracking-tight">Spiritual Insights</h1>
+                    <h1 className="text-4xl md:text-5xl font-serif text-rose-900 mb-6 tracking-tight">Spiritual Insights</h1>
                     <p className="text-slate-600 max-w-2xl mx-auto italic">Explore the wisdom of crystals, tarot, and energy healing through Pooja's perspective.</p>
                     <div className="w-24 h-1 bg-rose-200 mx-auto mt-6"></div>
                 </div>

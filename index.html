@@ -4,11 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Divine Guidance Studio | Pooja Gupta</title>
+    <title>Shunyethra | Pooja Gupta</title>
 
     <!-- PWA Meta Tags -->
-    <meta name="description"
-        content="A spiritual healing & guidance platform by Pooja Gupta - Tarot Reading, Crystal Healing, and Spiritual Counseling">
+    <meta name="description" content="A spiritual healing & guidance platform by Pooja Gupta - Tarot Reading, Crystal Healing, and Spiritual Counseling">
     <meta name="google-site-verification" content="f8fA5r5g8fA5r5g8fA5r5g8fA5r5g8fA5r5g8fA5r5g" />
     <meta name="theme-color" content="#f43f5e">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -24,73 +23,96 @@
     <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-96x96.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-72x72.png">
+    <link rel="preload" href="/assets/grok_video.mp4" as="video" type="video/mp4">
+    <link rel="preload" href="/assets/laptop_hero.mp4" as="video" type="video/mp4" media="(min-width: 768px)">
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Montserrat:wght@300;400;600&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
+        html {
+            scroll-behavior: auto !important;
+            overflow-x: hidden;
+        }
+        
         body {
             font-family: 'Montserrat', sans-serif;
-            scroll-behavior: smooth;
+            scroll-behavior: auto;
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
         }
-
+        
         h1,
         h2,
         h3,
         .font-mystic {
             font-family: 'Cinzel', serif;
         }
-
+        
         .bg-mystic-gradient {
             background: radial-gradient(circle at center, #fff1f2 0%, #ffffff 100%);
         }
-
+        
         .gold-border {
             border: 1px solid rgba(251, 191, 36, 0.3);
         }
-
+        
         .rose-gold-glow {
             box-shadow: 0 0 15px rgba(253, 164, 186, 0.2);
         }
-
+        
         @keyframes marquee {
             0% {
                 transform: translateX(0);
             }
-
             100% {
                 transform: translateX(-50%);
             }
         }
-
+        
         .animate-marquee {
             animation: marquee 30s linear infinite;
         }
-
+        
         .animate-marquee:hover {
             animation-play-state: paused;
         }
-
+        
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
-
+        
         .no-scrollbar {
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
-
+        
         @keyframes fadeIn {
             from {
                 opacity: 0;
                 transform: translateY(10px);
             }
-
             to {
                 opacity: 1;
                 transform: translateY(0);
             }
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+            }
+            to {
+                transform: translateX(0);
+            }
+        }
+        
+        .animate-slide-in {
+            animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
     </style>
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>

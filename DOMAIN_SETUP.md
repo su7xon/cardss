@@ -5,7 +5,7 @@ The error **"Payment blocked as website does not match registered website(s)"** 
 **You MUST do this to unlock payments:**
 
 1.  **Login** to your [Razorpay Dashboard](https://dashboard.razorpay.com/).
-2.  Go to **Settings** (Look for the ⚙️ Gear icon, usually bottom-left).
+2.  Go to **Settings** (Look for the Settings option, usually bottom-left).
 3.  Click on **Website & app settings** (or just "Website").
 4.  Adding your domain:
     *   Click **"Add Website"** or **"Manage Website"**.

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Product } from '../types';
-import { ShoppingBag, Eye, Heart } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import './ProductCard.css';
 
@@ -75,7 +75,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         <div className="mt-auto flex items-center justify-between pt-2">
           <div className="flex items-baseline gap-1.5 flex-wrap">
             <span className="text-sm sm:text-base font-bold text-gray-900">₹{product.price}</span>
-            {product.originalPrice && (
+            {product.originalPrice && Number(product.originalPrice) > Number(product.price) && (
               <span className="text-[10px] sm:text-xs text-gray-400 line-through">₹{product.originalPrice}</span>
             )}
           </div>

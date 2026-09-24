@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, ArrowRight, User, Heart, Sparkles, ShieldCheck } from 'lucide-react';
+import { ArrowRight, User, Heart, Sparkles, ShieldCheck } from 'lucide-react';
 import { AboutContent } from '../types';
 
 interface AboutPageProps {

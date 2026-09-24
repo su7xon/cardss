@@ -61,12 +61,12 @@ const Navbar: React.FC<NavbarProps> = ({ products = [], services = [] }) => {
     const lowerQuery = query.toLowerCase();
     
     const filteredProducts = products
-      .filter(p => p.name.toLowerCase().includes(lowerQuery) || p.description.toLowerCase().includes(lowerQuery))
+      .filter(p => (p.name || '').toLowerCase().includes(lowerQuery) || (p.description || '').toLowerCase().includes(lowerQuery))
       .slice(0, 5)
       .map(p => ({ id: p.id, name: p.name, type: 'product' as const, image: p.image }));
 
     const filteredServices = services
-      .filter(s => s.name.toLowerCase().includes(lowerQuery) || s.description.toLowerCase().includes(lowerQuery))
+      .filter(s => (s.name || '').toLowerCase().includes(lowerQuery) || (s.description || '').toLowerCase().includes(lowerQuery))
       .slice(0, 3)
       .map(s => ({ id: s.id, name: s.name, type: 'service' as const, image: s.image }));
 

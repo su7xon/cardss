@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Booking, Service, Testimonial } from '../types';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import { addBooking, addTestimonial, subscribeToSettings, getDefaultSettings } from '../services/databaseService';
 import { sendBookingNotification } from '../services/emailService';
 
@@ -12,10 +14,9 @@ import { openPaymentModal } from '../services/razorpayService';
 interface BookingPageProps {
   services: Service[];
   testimonials: Testimonial[];
-  onBookingSubmit?: (booking: Booking) => void;
 }
 
-const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBookingSubmit }) => {
+const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials }) => {
   const location = useLocation();
   const { user, signInWithGoogle } = useAuth();
   const [step, setStep] = useState(1);
@@ -268,6 +269,14 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
   const finalizeBooking = async (method: 'UPI' | 'WhatsApp' | 'COD') => {
     setIsSubmitting(true);
 
+    // Validate price before payment
+    const safePrice = Number(formData.price) || 0;
+    if (safePrice <= 0) {
+      alert('Invalid booking price. Please contact support.');
+      setIsSubmitting(false);
+      return;
+    }
+
     // Prepare Booking Data
     const isTarot = formData.service.includes('Tarot');
     const bookingData: any = {
@@ -297,8 +306,14 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
         bookingData.paymentStatus = status;
         if (transactionId) bookingData.transactionId = transactionId;
 
-        // For WhatsApp, we open it IMMEDIATELY to avoid delay and popup blocking
+        // For WhatsApp, save to DB FIRST, then redirect
         if (method === 'WhatsApp') {
+          await addBooking(bookingData);
+          sendBookingNotification({
+            ...bookingData,
+            email: user?.email || formData.email || bookingData.email
+          }, formData.email || user?.email).catch(e => console.error("Email error", e));
+
           const message = encodeURIComponent(
             `*New Booking Request*\n\n` +
             `*Client:* ${formData.name}\n` +
@@ -307,22 +322,9 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
             `*Price:* ₹${formData.price}\n\n` +
             `I would like to finalize this booking.`
           );
-          
-          const whatsappUrl = `https://wa.me/916397832791?text=${message}`;
-          
-          // Use window.location.href for immediate redirect to avoid popup blockers
-          // and ensure the fastest transition as requested by the user.
-          window.location.href = whatsappUrl;
-          
-          // Still save to database and send email in the background 
-          // (Note: window.location.href will start navigation, but these may still fire)
-          addBooking(bookingData).catch(e => console.error("Background DB error", e));
-          sendBookingNotification({
-            ...bookingData,
-            email: user?.email || formData.email || bookingData.email
-          }, formData.email || user?.email).catch(e => console.error("Background Email error", e));
 
-          return; // Stop here as we've redirected
+          window.location.href = `https://wa.me/916397832791?text=${message}`;
+          return;
         }
 
         // For other methods, we wait for completion
@@ -344,7 +346,11 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
     };
 
     if (method === 'UPI') {
-      // Trigger Razorpay
+      // Save booking FIRST with Pending status, then trigger payment
+      bookingData.status = 'Pending';
+      bookingData.paymentStatus = 'Pending';
+      const bookingId = await addBooking(bookingData);
+
       const cleanPhone = formData.phone.replace(/\D/g, '');
       await openPaymentModal(
         formData.price,
@@ -355,11 +361,22 @@ const BookingPage: React.FC<BookingPageProps> = ({ services, testimonials, onBoo
           desc: `Booking: ${formData.service}`
         },
         async (response: any) => {
-          // Payment Success
-          await processBooking('Paid', response.razorpay_payment_id);
+          // Payment Success — update booking
+          const bookingRef = doc(db, 'bookings', bookingId);
+          await updateDoc(bookingRef, {
+            status: 'Confirmed',
+            paymentStatus: 'Paid',
+            transactionId: response.razorpay_payment_id || ''
+          });
+          sendBookingNotification({
+            ...bookingData,
+            id: bookingId,
+            email: user?.email || formData.email || bookingData.email
+          }, formData.email || user?.email).catch(e => console.error("Email error", e));
+          setStep(3);
         },
         (error: any) => {
-          // Payment Failure
+          // Payment Failed — booking still exists as Pending
           console.error('Booking Payment Failed', error);
           alert('Payment Failed: ' + (error.description || 'Unknown error'));
           setIsSubmitting(false);

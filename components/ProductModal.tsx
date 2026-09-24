@@ -58,10 +58,12 @@ const ProductModal: React.FC<ProductModalProps> = ({
           <h2 className="text-3xl font-mystic text-slate-900 mb-2">{product.name}</h2>
           <div className="flex items-baseline gap-3 mb-6">
             <span className="text-3xl font-bold text-rose-600">₹{product.price}</span>
-            {product.originalPrice && (
+            {product.originalPrice && Number(product.originalPrice) > Number(product.price) && (
               <span className="text-lg text-slate-400 line-through font-medium">₹{product.originalPrice}</span>
             )}
-            <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">SAVE ₹{product.originalPrice ? product.originalPrice - product.price : 100}</span>
+            {product.originalPrice && Number(product.originalPrice) > Number(product.price) && (
+              <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">SAVE ₹{Number(product.originalPrice) - Number(product.price)}</span>
+            )}
           </div>
 
           <div className="bg-rose-50/50 rounded-2xl p-6 mb-8 border border-rose-100">

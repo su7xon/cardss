@@ -12,7 +12,8 @@ import {
   Timestamp,
   setDoc,
   where,
-  serverTimestamp
+  serverTimestamp,
+  deleteField
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './firebase';
@@ -56,17 +57,6 @@ export const updateUserProfile = async (userId: string, data: Partial<import('..
 
 // ============ IMAGE UPLOAD ============
 
-export const uploadProductImage = async (file: File): Promise<string> => {
-  const timestamp = Date.now();
-  const fileName = `products/${timestamp}_${file.name}`;
-  const storageRef = ref(storage, fileName);
-
-  await uploadBytes(storageRef, file);
-  const downloadURL = await getDownloadURL(storageRef);
-
-  return downloadURL;
-};
-
 export const uploadCoursePdf = async (file: File): Promise<string> => {
   const timestamp = Date.now();
   const fileName = `courses-ebooks/pdfs/${timestamp}_${file.name}`;
@@ -92,7 +82,24 @@ export const subscribeToProducts = (callback: (products: Product[]) => void) => 
       ...doc.data()
     })) as Product[];
     callback(products);
+  }, (error) => {
+    console.error('Products subscription error:', error);
+    callback([]);
   });
+};
+
+export const getProductById = async (id: string): Promise<Product | null> => {
+  try {
+    const docRef = doc(db, 'products', id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as Product;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching product by id:', error);
+    return null;
+  }
 };
 
 export const addProduct = async (product: Omit<Product, 'id'>) => {
@@ -105,9 +112,16 @@ export const addProduct = async (product: Omit<Product, 'id'>) => {
 
 export const updateProduct = async (id: string, updates: Partial<Product>) => {
   const docRef = doc(db, 'products', id);
-  // Use setDoc with merge so edits also work for fallback/imported products
-  // that may not yet exist as Firestore documents.
-  await setDoc(docRef, updates, { merge: true });
+  // Remove undefined fields so they get cleared in Firestore
+  const cleanUpdates: any = {};
+  for (const [key, value] of Object.entries(updates)) {
+    if (value === undefined || value === null) {
+      cleanUpdates[key] = deleteField();
+    } else {
+      cleanUpdates[key] = value;
+    }
+  }
+  await setDoc(docRef, cleanUpdates, { merge: true });
 };
 
 export const deleteProduct = async (id: string) => {
@@ -125,6 +139,9 @@ export const subscribeToBookings = (callback: (bookings: Booking[]) => void) => 
       ...doc.data()
     })) as Booking[];
     callback(bookings);
+  }, (error) => {
+    console.error('Bookings subscription error:', error);
+    callback([]);
   });
 };
 
@@ -155,6 +172,9 @@ export const subscribeToTestimonials = (callback: (testimonials: Testimonial[]) 
       ...doc.data()
     })) as Testimonial[];
     callback(testimonials);
+  }, (error) => {
+    console.error('Testimonials subscription error:', error);
+    callback([]);
   });
 };
 
@@ -186,6 +206,9 @@ export const subscribeToOrders = (callback: (orders: Order[]) => void) => {
       ...doc.data()
     })) as Order[];
     callback(orders);
+  }, (error) => {
+    console.error('Orders subscription error:', error);
+    callback([]);
   });
 };
 
@@ -197,9 +220,11 @@ export const addOrder = async (order: Omit<Order, 'id' | 'createdAt'>) => {
   return docRef.id;
 };
 
-export const updateOrderStatus = async (id: string, status: Order['status']) => {
+export const updateOrderStatus = async (id: string, status: Order['status'], transactionId?: string) => {
   const docRef = doc(db, 'orders', id);
-  await updateDoc(docRef, { status });
+  const updates: any = { status };
+  if (transactionId) updates.transactionId = transactionId;
+  await updateDoc(docRef, updates);
 };
 
 export const deleteOrder = async (id: string) => {
@@ -416,7 +441,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   productCategories: ['Crystal', 'Jewelry', 'Aura', 'Bracelet', 'Raw Stone', 'Charged Stone'],
   adminPassword: 'pooja.gupta001',
   heroImage: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=1200',
-  heroVideo: undefined,
+  heroVideo: '',
   heroContent: {
     heading: 'Healing • Guidance • Tarot',
     subheading: 'Personalized tarot reading, healing guidance\n& authentic crystals for balance, clarity and growth.',
@@ -483,6 +508,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
 export const subscribeToSettings = (callback: (settings: SiteSettings) => void) => {
   const settingsDoc = doc(db, 'settings', 'site');
   return onSnapshot(settingsDoc, (snapshot) => {
+    try {
     if (snapshot.exists()) {
       const data = snapshot.data() as any;
 
@@ -525,15 +551,34 @@ export const subscribeToSettings = (callback: (settings: SiteSettings) => void) 
       callback(merged);
     } else {
       // Initialize with defaults if not exists
-      setDoc(settingsDoc, DEFAULT_SETTINGS);
+      setDoc(settingsDoc, DEFAULT_SETTINGS).catch(err => console.error('Failed to init settings:', err));
       callback(DEFAULT_SETTINGS);
     }
+    } catch (e) {
+      console.error('Settings subscription error:', e);
+      callback(DEFAULT_SETTINGS);
+    }
+  }, (error) => {
+    console.error('Settings subscription error:', error);
+    callback(DEFAULT_SETTINGS);
   });
+};
+
+const stripUndefined = (value: any): any => {
+  if (Array.isArray(value)) return value.map(stripUndefined);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([, v]) => v !== undefined)
+        .map(([k, v]) => [k, stripUndefined(v)])
+    );
+  }
+  return value;
 };
 
 export const updateAboutContent = async (about: AboutContent) => {
   const settingsDoc = doc(db, 'settings', 'site');
-  await setDoc(settingsDoc, { about }, { merge: true });
+  await setDoc(settingsDoc, { about: stripUndefined(about) }, { merge: true });
 };
 
 export const updateServices = async (services: Service[]) => {
@@ -579,7 +624,7 @@ export const updateServiceCategories = async (categories: import('../types').Ser
 export const updateProductCategories = async (categories: string[]) => {
   const settingsDoc = doc(db, 'settings', 'site');
   await setDoc(settingsDoc, { productCategories: categories }, { merge: true });
-};
+}; 
 
 export const updateAdminPassword = async (password: string) => {
   const settingsDoc = doc(db, 'settings', 'site');
@@ -593,22 +638,17 @@ export const updateHeroBackground = async (heroImage: string, heroVideo: string)
 
 export const updateHeroContent = async (heroContent: SiteSettings['heroContent']) => {
   const settingsDoc = doc(db, 'settings', 'site');
-  await setDoc(settingsDoc, { heroContent }, { merge: true });
+  await setDoc(settingsDoc, { heroContent: stripUndefined(heroContent) }, { merge: true });
 };
 
 export const updateFooterSettings = async (footer: NonNullable<SiteSettings['footer']>) => {
   const settingsDoc = doc(db, 'settings', 'site');
-  await setDoc(settingsDoc, { footer }, { merge: true });
-};
-
-export const updateUpiId = async (upiId: string) => {
-  const settingsDoc = doc(db, 'settings', 'site');
-  await setDoc(settingsDoc, { upiId }, { merge: true });
+  await setDoc(settingsDoc, { footer: stripUndefined(footer) }, { merge: true });
 };
 
 export const updateCrystalCombos = async (crystalCombos: import('../types').CrystalCombo[]) => {
   const settingsDoc = doc(db, 'settings', 'site');
-  await setDoc(settingsDoc, { crystalCombos }, { merge: true });
+  await setDoc(settingsDoc, { crystalCombos: stripUndefined(crystalCombos) }, { merge: true });
 };
 
 export const getDefaultSettings = () => DEFAULT_SETTINGS;
@@ -616,6 +656,7 @@ export const getDefaultSettings = () => DEFAULT_SETTINGS;
 // ============ SEED DATA (for initial setup) ============
 
 export const seedInitialData = async (products: Product[], testimonials: Testimonial[], blogs: BlogPost[]) => {
+  try {
   // Check if seeding has already been completed before
   const settingsRef = doc(db, 'settings', 'site');
   const settingsDoc = await getDoc(settingsRef);
@@ -656,5 +697,9 @@ export const seedInitialData = async (products: Product[], testimonials: Testimo
   if (!hasSeeded) {
     await setDoc(settingsRef, { seedCompleted: true }, { merge: true });
     console.log('Marked seeding as completed');
+  }
+  } catch (error) {
+    console.error('Seed data error:', error);
+    throw error;
   }
 };

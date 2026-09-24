@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Product } from '../types';
 import { openPaymentModal, initializeRazorpay } from '../services/razorpayService';
-import { addOrder, getUserProfile } from '../services/databaseService';
+import { addOrder, updateOrderStatus, getUserProfile } from '../services/databaseService';
 import { useAuth } from '../contexts/AuthContext';
 
 interface CartItem extends Product {
@@ -180,10 +180,16 @@ const Checkout: React.FC = () => {
             }
 
             // Online Payment Flow (Razorpay)
+            // Save order FIRST with Pending status — payment captured or not, order exists
+            const orderId = await addOrder({
+                ...orderData,
+                status: 'Pending' as const,
+            });
+
             // Initialize Razorpay SDK
             await initializeRazorpay();
 
-            // Open payment modal — order is ONLY saved after successful payment
+            // Open payment modal
             openPaymentModal(
                 cartTotal,
                 {
@@ -193,16 +199,12 @@ const Checkout: React.FC = () => {
                     desc: `Order for ${checkoutForm.name}`
                 },
                 async (response: any) => {
-                    // Payment SUCCESS — now save order to database
+                    // Payment SUCCESS — mark as Completed
                     console.log('Payment Success:', response);
                     try {
-                        await addOrder({
-                            ...orderData,
-                            status: 'Completed' as const,
-                            transactionId: response.razorpay_payment_id || '',
-                        });
+                        await updateOrderStatus(orderId, 'Completed', response.razorpay_payment_id || '');
                     } catch (dbErr) {
-                        console.error('Order save error after payment:', dbErr);
+                        console.error('Order status update after payment:', dbErr);
                     }
                     alert('Payment successful! Thank you for your order. Order ID: ' + response.razorpay_payment_id);
                     if (!location.state?.buyNowItem) {
@@ -211,7 +213,7 @@ const Checkout: React.FC = () => {
                     navigate('/shop');
                 },
                 (error: any) => {
-                    // Payment FAILED or CLOSED — no order is saved
+                    // Payment FAILED or CLOSED — order still exists as Pending
                     console.error('Payment Failed:', error);
                     setIsProcessing(false);
                 }

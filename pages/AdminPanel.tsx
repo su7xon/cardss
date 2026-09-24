@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Product, Booking, Testimonial, AdminView, SiteSettings, Service, AboutContent, ServiceCategory, HeroContent, FooterSettings, CourseEbook, CrystalCombo } from '../types';
+import { Product, Booking, Testimonial, AdminView, SiteSettings, Service, AboutContent, ServiceCategory, HeroContent, FooterSettings, CourseEbook, CrystalCombo, Order } from '../types';
 import {
   updateBooking as updateBookingInDB,
   deleteBooking as deleteBookingFromDB,
@@ -34,7 +34,7 @@ import {
   uploadCourseCover,
   updateCrystalCombos
 } from '../services/databaseService';
-import { uploadImage, uploadPdf } from '../services/imageUpload';
+import { uploadImage } from '../services/imageUpload';
 import Toast from '../components/Toast';
 import ConfirmationModal from '../components/ConfirmationModal';
 
@@ -46,6 +46,21 @@ interface AdminPanelProps {
   testimonials: Testimonial[];
   setTestimonials: React.Dispatch<React.SetStateAction<Testimonial[]>>;
 }
+
+const normalizeOrder = (o: any): Order => ({
+  id: o.id || '',
+  customerName: o.customerName || '',
+  email: o.email || '',
+  phone: o.phone || o.customerPhone || '',
+  address: o.address || o.shippingAddress || '',
+  pincode: o.pincode || o.pinCode || '',
+  items: Array.isArray(o.items) ? o.items : [],
+  total: o.total || o.totalAmount || 0,
+  paymentMethod: o.paymentMethod || 'COD',
+  status: o.status || 'Pending',
+  transactionId: o.transactionId || '',
+  createdAt: o.createdAt || null,
+});
 
 const AdminPanel: React.FC<AdminPanelProps> = ({
   products, setProducts,
@@ -81,8 +96,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const coursePdfInputRef = useRef<HTMLInputElement>(null);
   const courseCoverInputRef = useRef<HTMLInputElement>(null);
   const [crystalCombos, setCrystalCombos] = useState<CrystalCombo[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  // Reset search when switching views
+  useEffect(() => { setSearchQuery(''); }, [view]);
   const [isUpdatingCombo, setIsUpdatingCombo] = useState(false);
-  const FIREBASE_UPLOAD_TIMEOUT_MS = 20000;
+  const FIREBASE_UPLOAD_TIMEOUT_MS = 120000;
   const CLOUDINARY_UPLOAD_TIMEOUT_MS = 30000;
   const FIRESTORE_WRITE_TIMEOUT_MS = 15000;
 
@@ -121,6 +139,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [productForm, setProductForm] = useState({
     name: '',
     price: 0,
+    originalPrice: 0,
     description: '',
     metaphysicalProperties: '',
     image: '',
@@ -255,7 +274,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     });
 
     const unsubscribeOrders = subscribeToOrders((data) => {
-      setOrders(data);
+      setOrders(data.map(normalizeOrder));
     });
 
     return () => {
@@ -295,27 +314,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       let pdfUrl = courseForm.pdfUrl;
       let coverUrl = courseForm.coverImage;
       if (coursePdfFile) {
-        if (isLocalPreview) {
+        // Firebase Storage only - Cloudinary raw delivery is blocked (401) for this account
+        try {
           pdfUrl = await withTimeout(
-            uploadPdf(coursePdfFile),
-            CLOUDINARY_UPLOAD_TIMEOUT_MS,
-            'Cloudinary PDF upload'
+            uploadCoursePdf(coursePdfFile),
+            FIREBASE_UPLOAD_TIMEOUT_MS,
+            'Firebase PDF upload'
           );
-        } else {
-          try {
-            pdfUrl = await withTimeout(
-              uploadCoursePdf(coursePdfFile),
-              FIREBASE_UPLOAD_TIMEOUT_MS,
-              'Firebase PDF upload'
-            );
-          } catch (pdfErr) {
-            console.warn('Firebase PDF upload failed, falling back to Cloudinary:', pdfErr);
-            pdfUrl = await withTimeout(
-              uploadPdf(coursePdfFile),
-              CLOUDINARY_UPLOAD_TIMEOUT_MS,
-              'Cloudinary PDF upload'
-            );
-          }
+        } catch (pdfErr) {
+          console.error('[PDF Upload] Firebase failed - check Storage rules:', pdfErr);
+          throw new Error(`PDF upload failed: ${pdfErr instanceof Error ? pdfErr.message : pdfErr}. Check Firebase Storage rules - reads/writes must be public.`);
         }
       }
       if (courseCoverFile) {
@@ -367,6 +375,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  const downloadCoursePdf = async (item: CourseEbook) => {
+    if (!item.pdfUrl) return;
+    try {
+      const response = await fetch(item.pdfUrl);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      let blob = await response.blob();
+      const isPdf = blob.size >= 4 && (await blob.slice(0, 4).text()).startsWith('%PDF');
+      if (blob.size === 0 || !isPdf) {
+        console.error('[PDF Download] Response is not a valid PDF, opening viewer instead', item.pdfUrl);
+        window.open(item.pdfUrl, '_blank');
+        return;
+      }
+      if (blob.type !== 'application/pdf') {
+        blob = new Blob([blob], { type: 'application/pdf' });
+      }
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${item.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+    } catch (error) {
+      console.error('Download failed:', error);
+      window.open(item.pdfUrl, '_blank');
+    }
+  };
+
   const handleDeleteCourse = (id: string) => {
     setConfirmModal({
       isOpen: true,
@@ -414,6 +451,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setProductForm({
       name: '',
       price: 0,
+      originalPrice: 0,
       description: '',
       metaphysicalProperties: '',
       image: '',
@@ -445,7 +483,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         return;
       }
 
-      const productData = { ...productForm, image: imageUrl };
+      const price = Number(productForm.price) || 0;
+      const mrp = Number(productForm.originalPrice) || 0;
+
+      if (mrp > 0 && mrp <= price) {
+        showToast('MRP selling price se zyada hona chahiye (MRP > Price)', 'error');
+        setIsUploading(false);
+        return;
+      }
+
+      const productData = {
+        ...productForm,
+        price,
+        // 0 / empty = no MRP -> remove field so no OFF badge shows
+        originalPrice: mrp > 0 ? mrp : undefined,
+        image: imageUrl
+      };
 
       if (editingProduct) {
         await updateProductInDB(editingProduct.id, productData);
@@ -512,6 +565,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setProductForm({
       name: product.name,
       price: product.price,
+      originalPrice: product.originalPrice ?? 0,
       description: product.description,
       metaphysicalProperties: product.metaphysicalProperties || '',
       image: product.image,
@@ -520,6 +574,39 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     });
     setShowProductModal(true);
   };
+
+  const filteredOrders = useMemo(() => 
+    orders.filter(o => !searchQuery || 
+      o.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (o.phone || '').includes(searchQuery) ||
+      (o.address || '').toLowerCase().includes(searchQuery.toLowerCase())
+    ), [orders, searchQuery]);
+
+  const filteredBookings = useMemo(() =>
+    bookings.filter(b => !searchQuery ||
+      b.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      b.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      b.phone.includes(searchQuery) ||
+      b.service.toLowerCase().includes(searchQuery.toLowerCase())
+    ), [bookings, searchQuery]);
+
+  const filteredProducts = useMemo(() =>
+    products.filter(p => !searchQuery ||
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.category.toLowerCase().includes(searchQuery.toLowerCase())
+    ), [products, searchQuery]);
+
+  const filteredTestimonials = useMemo(() =>
+    testimonials.filter(t => !searchQuery ||
+      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.text.toLowerCase().includes(searchQuery.toLowerCase())
+    ), [testimonials, searchQuery]);
+
+  const filteredBlogs = useMemo(() =>
+    blogs.filter(b => !searchQuery ||
+      b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (b.excerpt || '').toLowerCase().includes(searchQuery.toLowerCase())
+    ), [blogs, searchQuery]);
 
   const analytics = useMemo(() => {
     const totalSales = bookings
@@ -783,7 +870,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const updateBookingStatus = async (id: string, newStatus: 'Confirmed' | 'Completed') => {
+  const updateBookingStatus = async (id: string, newStatus: Booking['status']) => {
     try {
       await updateBookingInDB(id, { status: newStatus });
       showToast('Booking updated successfully!', 'success');
@@ -887,9 +974,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
+      <>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 relative">
         <div className="w-full max-w-sm">
-          {/* Logo */}
           <div className="text-center mb-10">
             <div className="w-14 h-14 bg-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-rose-900/40">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -936,6 +1023,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </form>
         </div>
       </div>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </>
     );
   }
 
@@ -989,14 +1078,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     {testimonials.filter(t => !t.isModerated).length}
                   </span>
                 )}
-                {item.id === AdminView.ORDERS && orders.filter(o => o.status === 'pending').length > 0 && (
+                {item.id === AdminView.ORDERS && orders.filter(o => o.status === 'Pending').length > 0 && (
                   <span className="ml-auto bg-amber-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                    {orders.filter(o => o.status === 'pending').length}
+                    {orders.filter(o => o.status === 'Pending').length}
                   </span>
                 )}
-                {item.id === AdminView.APPOINTMENTS && bookings.filter(b => b.status === 'pending').length > 0 && (
+                {item.id === AdminView.APPOINTMENTS && bookings.filter(b => b.status === 'Pending').length > 0 && (
                   <span className="ml-auto bg-blue-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                    {bookings.filter(b => b.status === 'pending').length}
+                    {bookings.filter(b => b.status === 'Pending').length}
                   </span>
                 )}
               </button>
@@ -1049,10 +1138,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             >
               <span className="text-xl leading-none relative">
                 {item.emoji}
-                {item.id === AdminView.ORDERS && orders.filter(o => o.status === 'pending').length > 0 && (
+                {item.id === AdminView.ORDERS && orders.filter(o => o.status === 'Pending').length > 0 && (
                   <span className="absolute top-0 -right-1 w-2 h-2 bg-rose-500 rounded-full border border-slate-900"></span>
                 )}
-                {item.id === AdminView.APPOINTMENTS && bookings.filter(b => b.status === 'pending').length > 0 && (
+                {item.id === AdminView.APPOINTMENTS && bookings.filter(b => b.status === 'Pending').length > 0 && (
                   <span className="absolute top-0 -right-1 w-2 h-2 bg-rose-500 rounded-full border border-slate-900"></span>
                 )}
               </span>
@@ -1210,12 +1299,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      <a href={item.pdfUrl} download={`${item.title}.pdf`}
+                      <button onClick={() => downloadCoursePdf(item)}
                         className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Download PDF">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
-                      </a>
+                      </button>
                       <a href={item.pdfUrl} target="_blank" rel="noopener noreferrer"
                         className="p-2 text-purple-500 hover:bg-purple-50 rounded-lg transition-colors" title="Preview PDF">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1449,6 +1538,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <h3 className="text-2xl lg:text-4xl font-mystic text-rose-900 mb-2">Appointment Dashboard</h3>
               <p className="text-slate-500 text-sm lg:text-base">Manage all bookings and consultations</p>
             </div>
+            <div className="relative mb-4">
+              <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <input
+                type="text"
+                placeholder="Search bookings by name, email, phone or service..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white border border-slate-200 pl-10 pr-4 py-3 rounded-xl outline-none focus:border-rose-400 text-sm"
+              />
+            </div>
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-sm lg:text-base">
                 <thead>
@@ -1461,7 +1560,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-rose-100">
-                  {bookings.length > 0 ? bookings.map(booking => (
+                  {filteredBookings.length > 0 ? filteredBookings.map(booking => (
                     <tr key={booking.id} className="border-b border-rose-50 hover:bg-rose-50/50 transition-colors">
                       <td className="py-4 pr-4 max-w-[200px]">
                         <p className="font-bold text-rose-900 truncate" title={booking.clientName}>{booking.clientName}</p>
@@ -1476,7 +1575,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <td className="py-4">
                         <select
                           value={booking.status}
-                          onChange={(e) => updateBookingStatus(booking.id, e.target.value as any)}
+                          onChange={(e) => updateBookingStatus(booking.id, e.target.value as Booking['status'])}
                           className={`bg-white border border-rose-200 text-[10px] uppercase font-bold p-1 rounded ${booking.status === 'Confirmed' ? 'text-green-600' : 'text-yellow-600'}`}
                         >
                           <option value="Pending">Pending</option>
@@ -1491,7 +1590,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan={5} className="py-10 text-center text-slate-500">No bookings found. Try booking a session first!</td>
+                      <td colSpan={5} className="py-10 text-center text-slate-500">{searchQuery ? 'No bookings match your search.' : 'No bookings found. Try booking a session first!'}</td>
                     </tr>
                   )}
                 </tbody>
@@ -1500,7 +1599,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
             {/* Mobile View - Card Layout */}
             <div className="md:hidden space-y-4">
-              {bookings.length > 0 ? bookings.map(booking => (
+              {filteredBookings.length > 0 ? filteredBookings.map(booking => (
                 <div key={booking.id} className="bg-white p-5 rounded-2xl border border-rose-100 shadow-sm space-y-4 relative">
                   <div className="flex justify-between items-start">
                     <div className="flex-grow min-w-0 mr-2">
@@ -1533,7 +1632,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       {['Pending', 'Confirmed', 'Completed'].map(status => (
                         <button
                           key={status}
-                          onClick={() => updateBookingStatus(booking.id, status as any)}
+                          onClick={() => updateBookingStatus(booking.id, status as Booking['status'])}
                           className={`flex-1 min-w-[70px] py-2 rounded-xl text-[10px] font-bold uppercase tracking-tighter transition-all shadow-sm ${booking.status === status
                             ? 'bg-rose-500 text-white ring-2 ring-rose-200'
                             : 'bg-slate-50 text-slate-500 border border-slate-100'
@@ -1546,7 +1645,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
               )) : (
-                <p className="py-10 text-center text-slate-500 text-sm">No bookings found.</p>
+                <p className="py-10 text-center text-slate-500 text-sm">{searchQuery ? 'No bookings match your search.' : 'No bookings found.'}</p>
               )}
             </div>
           </div>
@@ -1558,28 +1657,39 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="space-y-6 animate-fade-in">
             <h3 className="text-2xl font-mystic text-rose-900">Order Management</h3>
 
-            {orders.length === 0 ? (
-              <p className="text-center text-slate-500 py-10">No orders received yet.</p>
+            <div className="relative">
+              <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <input
+                type="text"
+                placeholder="Search orders by name, phone or address..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white border border-slate-200 pl-10 pr-4 py-3 rounded-xl outline-none focus:border-rose-400 text-sm"
+              />
+            </div>
+
+            {filteredOrders.length === 0 ? (
+              <p className="text-center text-slate-500 py-10">No orders found.</p>
             ) : (
               <>
                 {/* ── MOBILE: card list ── */}
                 <div className="flex flex-col gap-4 md:hidden">
-                  {orders.map(order => (
+                  {filteredOrders.map(order => (
                     <div key={order.id} className="bg-white rounded-2xl border border-rose-100 shadow-sm p-4 space-y-3">
                       {/* Customer */}
                       <div className="flex justify-between items-start gap-2">
                         <div className="min-w-0">
                           <p className="font-bold text-rose-900 truncate">{order.customerName}</p>
-                          <p className="text-[11px] text-rose-400 font-bold">{order.phone || (order as any).customerPhone}</p>
-                          <p className="text-xs text-slate-400 break-words line-clamp-2" title={order.address || (order as any).shippingAddress}>
-                            {order.address || (order as any).shippingAddress}
+                          <p className="text-[11px] text-rose-400 font-bold">{order.phone}</p>
+                          <p className="text-xs text-slate-400 break-words line-clamp-2" title={order.address}>
+                            {order.address}
                           </p>
-                          {(order.pincode || (order as any).pinCode) && (
-                            <p className="text-[11px] text-slate-500 font-medium mt-0.5">PIN: {order.pincode || (order as any).pinCode}</p>
+                          {order.pincode && (
+                            <p className="text-[11px] text-slate-500 font-medium mt-0.5">PIN: {order.pincode}</p>
                           )}
                         </div>
                         <span className="text-lg font-extrabold text-rose-600 whitespace-nowrap">
-                          ₹{order.total || (order as any).totalAmount}
+                          ₹{order.total}
                         </span>
                       </div>
 
@@ -1642,17 +1752,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </tr>
                     </thead>
                     <tbody className="text-sm">
-                      {orders.map(order => (
+                      {filteredOrders.map(order => (
                         <tr key={order.id} className="border-b border-rose-50 hover:bg-rose-50/50 transition-colors">
                           <td className="py-4 pr-4 max-w-[220px]">
                             <p className="font-bold text-rose-900 truncate" title={order.customerName}>{order.customerName}</p>
-                            <p className="text-[10px] text-rose-400 font-bold">{order.phone || (order as any).customerPhone}</p>
-                            <p className="text-xs text-slate-500 break-words mt-1" title={order.address || (order as any).shippingAddress}>
-                              {order.address || (order as any).shippingAddress}
+                            <p className="text-[10px] text-rose-400 font-bold">{order.phone}</p>
+                            <p className="text-xs text-slate-500 break-words mt-1" title={order.address}>
+                              {order.address}
                             </p>
-                            {(order.pincode || (order as any).pinCode) && (
+                            {order.pincode && (
                               <p className="text-[10px] text-slate-500 font-bold mt-1 bg-slate-50 inline-block px-2 py-0.5 rounded border border-slate-100">
-                                PIN: {order.pincode || (order as any).pinCode}
+                                PIN: {order.pincode}
                               </p>
                             )}
                           </td>
@@ -1665,7 +1775,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               ))}
                             </div>
                           </td>
-                          <td className="py-4 font-bold text-rose-600">₹{order.total || (order as any).totalAmount}</td>
+                          <td className="py-4 font-bold text-rose-600">₹{order.total}</td>
                           <td className="py-4">
                             <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded">
                               {order.paymentMethod}
@@ -1677,7 +1787,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           <td className="py-4">
                             <select
                               value={order.status}
-                              onChange={(e) => updateOrderStatus(order.id, e.target.value as any)}
+                          onChange={(e) => updateOrderStatus(order.id, e.target.value as Order['status'])}
                               className={`bg-white border border-rose-200 text-[10px] uppercase font-bold p-1 rounded ${
                                 order.status === 'Completed' ? 'text-green-600' :
                                 order.status === 'Cancelled' ? 'text-red-600' : 'text-yellow-600'
@@ -1720,8 +1830,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 + NEW POST
               </button>
             </div>
+            <div className="relative mb-4 px-1 sm:px-0">
+              <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <input
+                type="text"
+                placeholder="Search blog posts..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white border border-slate-200 pl-10 pr-4 py-3 rounded-xl outline-none focus:border-rose-400 text-sm"
+              />
+            </div>
             <div className="grid gap-5 px-1 sm:px-0 box-border">
-              {blogs.length > 0 ? blogs.map(blog => (
+              {filteredBlogs.length > 0 ? filteredBlogs.map(blog => (
                 <div key={blog.id} className="bg-white p-4 rounded-2xl border border-rose-100 flex flex-col gap-4 shadow-sm group w-full">
                   <div className="flex items-center gap-4">
                     <img src={blog.image} className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl object-cover shrink-0" alt="" />
@@ -1764,7 +1884,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </button>
                   </div>
                 </div>
-              )) : <p className="text-center text-slate-400 py-10">No blogs yet.</p>}
+              )) : <p className="text-center text-slate-400 py-10">{searchQuery ? 'No blogs match your search.' : 'No blogs yet.'}</p>}
             </div>
           </div>
         )}
@@ -1797,8 +1917,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 </button>
               </div>
             </div>
+            <div className="relative mb-4 px-1 sm:px-0">
+              <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <input
+                type="text"
+                placeholder="Search products by name or category..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white border border-slate-200 pl-10 pr-4 py-3 rounded-xl outline-none focus:border-rose-400 text-sm"
+              />
+            </div>
             <div className="grid gap-4 px-1 sm:px-0 box-border">
-              {products.length > 0 ? products.map(product => (
+              {filteredProducts.length > 0 ? filteredProducts.map(product => (
                 <div key={product.id} className="bg-white p-4 rounded-2xl border border-rose-100 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 shadow-sm relative group w-full max-w-full">
                   <div className="flex items-center gap-4 w-full sm:w-auto">
                     <img src={product.image} className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover" alt={product.name} />
@@ -1815,8 +1945,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <p className={`font-bold text-sm ${(product.stock ?? 0) < 5 ? 'text-red-500' : 'text-slate-700'}`}>{product.stock ?? 0}</p>
                       </div>
                       <div className="text-left sm:text-right">
-                        <p className="text-[10px] text-slate-400 mb-0.5 uppercase font-bold tracking-tighter">Price</p>
-                        <p className="font-bold text-rose-500 text-sm">₹{product.price}</p>
+                        <p className="text-[10px] text-slate-400 mb-0.5 uppercase font-bold tracking-tighter">Price / MRP</p>
+                        <p className="font-bold text-rose-500 text-sm">
+                          ₹{product.price}
+                          {product.originalPrice && product.originalPrice > product.price && (
+                            <span className="ml-2 font-medium text-slate-400 line-through">₹{product.originalPrice}</span>
+                          )}
+                        </p>
+                        {product.originalPrice && product.originalPrice > product.price ? (
+                          <p className="text-[10px] font-bold text-emerald-600">
+                            {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                          </p>
+                        ) : product.originalPrice && product.originalPrice <= product.price ? (
+                          <p className="text-[10px] font-bold text-red-500">MRP fix karo (Price se kam hai)</p>
+                        ) : null}
                       </div>
                     </div>
 
@@ -1856,7 +1998,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
               )) : (
-                <p className="text-slate-500 text-center py-10">No products in inventory. Add your first product!</p>
+                <p className="text-slate-500 text-center py-10">{searchQuery ? 'No products match your search.' : 'No products in inventory. Add your first product!'}</p>
               )}
             </div>
           </div>
@@ -1894,7 +2036,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Category</label>
                     <select
                       value={productForm.category}
-                      onChange={(e) => setProductForm({ ...productForm, category: e.target.value as any })}
+                      onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900"
                     >
                       {productCategoriesForm.map(cat => (
@@ -1904,9 +2046,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid md:grid-cols-3 gap-6">
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Price (₹)</label>
+                    <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Selling Price (₹)</label>
                     <input
                       required
                       type="number"
@@ -1914,6 +2056,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       value={productForm.price}
                       onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })}
                       className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900"
+                      placeholder="e.g. 1299"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">MRP (₹)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={productForm.originalPrice || ''}
+                      onChange={(e) => setProductForm({ ...productForm, originalPrice: Number(e.target.value) || 0 })}
+                      className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none text-slate-900"
+                      placeholder="e.g. 1799 (optional)"
                     />
                   </div>
                   <div className="space-y-2">
@@ -1928,6 +2082,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     />
                   </div>
                 </div>
+
+                {Number(productForm.originalPrice) > 0 && (
+                  <div className="text-sm font-medium rounded-xl px-4 py-3 bg-slate-50 border border-slate-200">
+                    {Number(productForm.originalPrice) > Number(productForm.price) ? (
+                      <span className="text-emerald-600">
+                        Discount: {Math.round(((Number(productForm.originalPrice) - Number(productForm.price)) / Number(productForm.originalPrice)) * 100)}% OFF (₹{Number(productForm.originalPrice) - Number(productForm.price)} saving)
+                      </span>
+                    ) : (
+                      <span className="text-red-500">
+                        MRP (₹{productForm.originalPrice}) selling price (₹{productForm.price}) se zyada hona chahiye, warna -% OFF dikhega.
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-400 uppercase tracking-widest">Product Image</label>
@@ -1995,12 +2163,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-slate-500 uppercase tracking-widest">Metaphysical Properties</label>
                   <textarea
-                    required
                     rows={3}
                     value={productForm.metaphysicalProperties}
                     onChange={(e) => setProductForm({ ...productForm, metaphysicalProperties: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl focus:border-rose-500 outline-none resize-none text-slate-900"
-                    placeholder="Healing properties, chakras, zodiac signs..."
+                    placeholder="Chakra, zodiac, healing benefits (optional)..."
                   />
                 </div>
 
@@ -2337,8 +2504,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         {view === AdminView.MODERATION && (
           <div className="space-y-6 sm:space-y-8 px-0 sm:px-4 overflow-x-hidden animate-fade-in">
             <h3 className="text-2xl font-mystic text-rose-900 px-4 sm:px-0">Review Moderation</h3>
+            <div className="relative mb-4 px-4 sm:px-0">
+              <svg className="absolute left-8 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <input
+                type="text"
+                placeholder="Search reviews by name or text..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white border border-slate-200 pl-10 pr-4 py-3 rounded-xl outline-none focus:border-rose-400 text-sm"
+              />
+            </div>
             <div className="grid gap-6 px-4 sm:px-0">
-              {testimonials.length > 0 ? testimonials.map(t => (
+              {filteredTestimonials.length > 0 ? filteredTestimonials.map(t => (
                 <div key={t.id} className="bg-white p-4 sm:p-6 rounded-2xl border border-rose-100 relative shadow-sm">
                   <div className="absolute top-6 right-6 flex gap-3">
                     {!t.isModerated && (
@@ -2381,7 +2558,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <p className="text-rose-900 font-bold">{t.name}</p>
                 </div>
               )) : (
-                <p className="text-slate-500 text-center py-10">No reviews submitted yet.</p>
+                <p className="text-slate-500 text-center py-10">{searchQuery ? 'No reviews match your search.' : 'No reviews submitted yet.'}</p>
               )}
             </div>
           </div>
@@ -3018,7 +3195,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       gradient: 'linear-gradient(135deg, #d97706 0%, #f59e0b 55%, #fbbf24 100%)',
                       accentColor: 'amber',
                       price: 0,
-                      originalPrice: undefined,
                       tag: '',
                       benefits: [],
                       includedItems: []

@@ -9,7 +9,7 @@ import BookingPage from './pages/BookingPage';
 import BlogPage from './pages/BlogPage';
 import AdminPanel from './pages/AdminPanel';
 import ScrollToTop from './components/ScrollToTop';
-import ProductCard from './components/ProductCard';
+
 import ProductDetails from './pages/ProductDetails';
 import CoursesPage from './pages/CoursesPage';
 import AboutPage from './pages/AboutPage';
@@ -37,34 +37,17 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [firebaseError, setFirebaseError] = useState<string | null>(null);
 
-  // Subscribe to Firebase real-time updates
+  // Subscribe to Firebase real-time updates (background, don't block rendering)
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-
-    // Timeout fallback - if Firebase doesn't respond in 5 seconds, use local data
-    timeoutId = setTimeout(() => {
-      if (isLoading) {
-        console.warn('Firebase timeout - using local data');
-        setIsLoading(false);
-      }
-    }, 5000);
-
     try {
-      // Seed initial data if database is empty
       seedInitialData(INITIAL_PRODUCTS, INITIAL_TESTIMONIALS, INITIAL_BLOGS).catch(err => {
         console.error('Seed error:', err);
-        setFirebaseError(err.message);
+        setFirebaseError('Failed to initialize data. Check console for details.');
       });
 
-      // Subscribe to real-time updates from Firestore
       const unsubProducts = subscribeToProducts((data) => {
         const liveProducts = Array.isArray(data) ? data : [];
         let deletedNameSet = new Set<string>();
-        const importedNameSet = new Set(
-          (INITIAL_PRODUCTS || [])
-            .map((p) => (p.name || '').trim().toLowerCase())
-            .filter(Boolean)
-        );
 
         try {
           const deletedNamesRaw = localStorage.getItem('deleted_product_names');
@@ -85,20 +68,22 @@ const App: React.FC = () => {
           return Boolean(normalizedName) && !deletedNameSet.has(normalizedName);
         });
 
+        const isNameDeleted = (name?: string) => {
+          if (!name) return false;
+          return deletedNameSet.has(String(name).trim().toLowerCase());
+        };
+
         const mergedMap = new Map();
-        
-        // Add initial products first
+
         INITIAL_PRODUCTS.forEach((p) => {
-          const normalizedName = (p.name || '').trim().toLowerCase();
-          if (!deletedNameSet.has(normalizedName)) {
-            mergedMap.set(normalizedName, p);
+          if (!isNameDeleted(p.name)) {
+            mergedMap.set(p.id, p);
           }
         });
-        
-        // Overlay/add live products
+
         filteredLiveProducts.forEach((live) => {
-          const normalizedName = (live.name || '').trim().toLowerCase();
-          mergedMap.set(normalizedName, { ...mergedMap.get(normalizedName), ...live });
+          if (!live.id || isNameDeleted(live.name)) return;
+          mergedMap.set(live.id, { ...mergedMap.get(live.id), ...live });
         });
 
         const getCreatedAtMs = (product: any) => {
@@ -114,9 +99,7 @@ const App: React.FC = () => {
           (a: any, b: any) => getCreatedAtMs(b) - getCreatedAtMs(a)
         );
         setProducts(merged);
-
         setIsLoading(false);
-        clearTimeout(timeoutId);
       });
 
       const unsubBookings = subscribeToBookings((data) => {
@@ -124,14 +107,13 @@ const App: React.FC = () => {
       });
 
       const unsubTestimonials = subscribeToTestimonials((liveData) => {
-        // Merge demo testimonials with live testimonials to ensure the wall is full
         const combined = [...INITIAL_TESTIMONIALS];
         liveData.forEach(live => {
           const index = combined.findIndex(c => c.id === live.id);
           if (index !== -1) {
-            combined[index] = live; // Update if exists
+            combined[index] = live;
           } else {
-            combined.push(live); // Add if new
+            combined.push(live);
           }
         });
         setTestimonials(combined);
@@ -142,9 +124,7 @@ const App: React.FC = () => {
         setIsSettingsLoaded(true);
       });
 
-      // Cleanup subscriptions on unmount
       return () => {
-        clearTimeout(timeoutId);
         unsubProducts();
         unsubBookings();
         unsubTestimonials();
@@ -153,8 +133,12 @@ const App: React.FC = () => {
     } catch (error: any) {
       console.error('Firebase connection error:', error);
       setFirebaseError(error.message);
-      setIsLoading(false);
     }
+  }, []);
+
+  // Let UI render immediately regardless of Firebase - initial data is already set
+  useEffect(() => {
+    setIsLoading(false);
   }, []);
 
   // Floating WhatsApp Button

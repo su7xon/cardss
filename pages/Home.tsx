@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ChevronRight, ShoppingBag, BookOpen, Download, Star, Users, ArrowRight } from 'lucide-react';
+import { ArrowRight, Download } from 'lucide-react';
 import { Testimonial, Service, ServiceCategory, HeroContent, Product, CourseEbook, CrystalCombo } from '../types';
 import { subscribeToCoursesEbooks, subscribeToSettings } from '../services/databaseService';
 import ProductCard from '../components/ProductCard';
@@ -342,7 +342,7 @@ const Home: React.FC<HomeProps> = ({ services, serviceCategories, testimonials, 
   return (
     <div className="space-y-2 md:space-y-12 pb-8 md:pb-16">
       <section
-        className={`relative w-full h-auto md:h-[90vh] aspect-[4/5] md:aspect-auto overflow-hidden bg-cover bg-center transition-opacity duration-300 ${isHeroVideoReady ? 'opacity-100' : 'opacity-0'}`}
+        className="relative w-full h-auto md:h-[90vh] aspect-[4/5] md:aspect-auto overflow-hidden bg-cover bg-center"
         style={{ background: 'linear-gradient(135deg, #881337 0%, #9f1239 50%, #000000 100%)' }}
       >
         {/* Video Background */}

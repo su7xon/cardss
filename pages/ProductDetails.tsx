@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Star, ShieldCheck, Truck, ArrowLeft, Zap, Lock, RefreshCcw, CheckCircle2 } from 'lucide-react';
+import { ShoppingBag, Star, ShieldCheck, Truck, ArrowLeft, Lock, RefreshCcw, CheckCircle2 } from 'lucide-react';
 import { Product, CrystalCombo } from '../types';
 import { useCart } from '../contexts/CartContext';
-import { subscribeToSettings } from '../services/databaseService';
+import { subscribeToSettings, getProductById } from '../services/databaseService';
 
 import { HEALING_PRODUCTS } from '../data/products';
 
@@ -20,10 +20,39 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ products }) => {
   const [addedToCart, setAddedToCart] = useState(false);
   const [crystalCombo, setCrystalCombo] = useState<CrystalCombo | null>(null);
   const [relatedPage, setRelatedPage] = useState(1);
+  const [directProduct, setDirectProduct] = useState<Product | null>(null);
+  const [directLoading, setDirectLoading] = useState(false);
+  const [graceDone, setGraceDone] = useState(false);
+
+  const isComboId = Boolean(id?.startsWith('combo_'));
 
   // Find the product from props, or fallback to HEALING_PRODUCTS
   const allProducts = products.length > 0 ? products : HEALING_PRODUCTS;
-  const product = allProducts.find(p => p.id === id);
+  const foundProduct = allProducts.find(p => p.id === id);
+
+  // If the product isn't in the loaded list (e.g. direct shared link to a
+  // Firestore-only product before the subscription resolves), fetch it directly.
+  useEffect(() => {
+    let cancelled = false;
+    setDirectProduct(null);
+    setDirectLoading(false);
+    if (!id || isComboId || foundProduct) return;
+    setDirectLoading(true);
+    getProductById(id).then((fetched) => {
+      if (cancelled) return;
+      setDirectProduct(fetched);
+    }).finally(() => {
+      if (!cancelled) setDirectLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [id, isComboId, foundProduct]);
+
+  // Grace period before showing "not found" (crystal combos load via settings subscription)
+  useEffect(() => {
+    setGraceDone(false);
+    const timer = setTimeout(() => setGraceDone(true), 3000);
+    return () => clearTimeout(timer);
+  }, [id]);
 
   // Check if it's a crystal combo
   useEffect(() => {
@@ -41,12 +70,36 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ products }) => {
     }
   }, [id]);
 
+  // Process details
+  const displayProduct = directProduct || foundProduct || (crystalCombo ? {
+    id: `combo_${crystalCombo.id}`,
+    name: crystalCombo.title,
+    price: crystalCombo.price,
+    originalPrice: crystalCombo.originalPrice,
+    description: crystalCombo.fullDescription || `${crystalCombo.subtitle} - ${crystalCombo.description}`,
+    image: crystalCombo.image,
+    category: 'Crystal Combo',
+    tag: crystalCombo.tag
+  } : null);
+
   useEffect(() => {
     window.scrollTo(0, 0);
     setRelatedPage(1); // Reset related products page on navigation
-  }, [product, id]);
+  }, [displayProduct, id]);
 
-  if (!product && !crystalCombo) {
+  const showLoading = !displayProduct && (directLoading || !graceDone || isComboId);
+
+  if (!displayProduct) {
+    if (showLoading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-white">
+          <div className="text-center">
+            <div className="w-10 h-10 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-slate-500 text-sm">Loading product...</p>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
@@ -63,60 +116,25 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ products }) => {
   }
 
   const handleBuyNow = () => {
-    if (!product && !crystalCombo) return;
-    
-    const item: Product = product || {
-      id: `combo_${crystalCombo!.id}`,
-      name: crystalCombo!.title,
-      price: crystalCombo!.price,
-      originalPrice: crystalCombo!.originalPrice,
-      description: `${crystalCombo!.subtitle} - ${crystalCombo!.description}`,
-      image: crystalCombo!.image || '',
-      category: 'Crystal Combo',
-      tag: crystalCombo!.tag
-    };
-    
-    // Pass item via navigate state for direct checkout without polluting the persistent cart
-    navigate('/checkout', { state: { buyNowItem: item } });
+    if (!displayProduct) return;
+    navigate('/checkout', { state: { buyNowItem: displayProduct } });
   };
 
   const handleAddToCart = () => {
-    if (!product && !crystalCombo) return;
-    
-    const item: Product = product || {
-      id: `combo_${crystalCombo!.id}`,
-      name: crystalCombo!.title,
-      price: crystalCombo!.price,
-      originalPrice: crystalCombo!.originalPrice,
-      description: `${crystalCombo!.subtitle} - ${crystalCombo!.description}`,
-      image: crystalCombo!.image || '',
-      category: 'Crystal Combo',
-      tag: crystalCombo!.tag
-    };
+    if (!displayProduct) return;
     
     // Use CartContext — this updates navbar count and saves correct flat format
-    addToCart(item);
+    addToCart(displayProduct);
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
   };
-
-  // Process details
-  const displayProduct = product || (crystalCombo ? {
-    id: `combo_${crystalCombo.id}`,
-    name: crystalCombo.title,
-    price: crystalCombo.price,
-    originalPrice: crystalCombo.originalPrice,
-    description: crystalCombo.fullDescription || `${crystalCombo.subtitle} - ${crystalCombo.description}`,
-    image: crystalCombo.image,
-    category: 'Crystal Combo',
-    tag: crystalCombo.tag
-  } : null);
-
-  if (!displayProduct) return null;
     
-  const discount = displayProduct.originalPrice 
-    ? Math.round(((displayProduct.originalPrice - displayProduct.price) / displayProduct.originalPrice) * 100) 
-    : 10;
+  const hasDiscount = Boolean(
+    displayProduct.originalPrice && displayProduct.originalPrice > displayProduct.price
+  );
+  const discount = hasDiscount
+    ? Math.round(((displayProduct.originalPrice! - displayProduct.price) / displayProduct.originalPrice!) * 100)
+    : 0;
     
   const wisdomBullets = crystalCombo?.benefits || (displayProduct.description ? [displayProduct.description] : ["Details coming soon."]);
 
@@ -178,10 +196,10 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ products }) => {
           <span className="text-lg mt-1 font-medium mr-1">₹</span>{displayProduct.price.toLocaleString('en-IN')}
       </div>
       
-      {displayProduct.originalPrice && (
+      {hasDiscount && (
         <div className="flex items-center justify-between mb-4">
           <div className="text-slate-500 text-sm">
-            M.R.P.: <span className="line-through">₹{displayProduct.originalPrice.toLocaleString('en-IN')}</span>
+            M.R.P.: <span className="line-through">₹{displayProduct.originalPrice!.toLocaleString('en-IN')}</span>
           </div>
           <div className="text-xs font-bold text-rose-600 bg-rose-50 px-2 py-1 rounded">
             {discount}% OFF
@@ -277,24 +295,23 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ products }) => {
 
             {/* Main Price Display for Desktop */}
             <div className="hidden lg:block mb-4">
-              {displayProduct.originalPrice && (
+              {hasDiscount ? (
                 <div className="flex items-baseline gap-3 mb-1">
                   <span className="text-rose-600 font-light text-3xl">-{discount}%</span>
                   <span className="text-4xl font-semibold text-slate-900 flex items-start">
                     <span className="text-xl mt-1 font-medium mr-1">₹</span>{displayProduct.price.toLocaleString('en-IN')}
                   </span>
                 </div>
-              )}
-              {!displayProduct.originalPrice && (
+              ) : (
                 <span className="text-4xl font-semibold text-slate-900 flex items-start mb-1">
                   <span className="text-xl mt-1 font-medium mr-1">₹</span>{displayProduct.price.toLocaleString('en-IN')}
                 </span>
               )}
-              
-              {displayProduct.originalPrice && (
+
+              {hasDiscount && (
                 <div className="text-slate-500 text-sm flex items-center gap-1">
-                  <span className="font-medium text-slate-600">M.R.P.:</span> 
-                  <span className="line-through">₹{displayProduct.originalPrice.toLocaleString('en-IN')}</span>
+                  <span className="font-medium text-slate-600">M.R.P.:</span>
+                  <span className="line-through">₹{displayProduct.originalPrice!.toLocaleString('en-IN')}</span>
                 </div>
               )}
               <p className="text-sm text-slate-700 mt-1">Inclusive of all taxes</p>
@@ -396,7 +413,7 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({ products }) => {
                   </p>
                   <div className="flex items-baseline gap-1.5 mt-auto">
                     <span className="text-sm font-bold text-slate-900">₹{Number(rp.price).toLocaleString('en-IN')}</span>
-                    {rp.originalPrice && (
+                    {rp.originalPrice && Number(rp.originalPrice) > Number(rp.price) && (
                       <span className="text-xs text-slate-400 line-through">₹{Number(rp.originalPrice).toLocaleString('en-IN')}</span>
                     )}
                   </div>

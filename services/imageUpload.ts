@@ -1,4 +1,4 @@
-const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
+const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dsl047raw';
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'ml_default';
 const UPLOAD_TIMEOUT = 30000; // 30 seconds
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB

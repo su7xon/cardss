@@ -32,7 +32,26 @@ const CoursesPage: React.FC = () => {
     try {
       // For direct download, use fetch + blob approach
       const response = await fetch(item.pdfUrl);
-      const blob = await response.blob();
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      let blob = await response.blob();
+      console.log('[PDF Download]', {
+        url: item.pdfUrl,
+        status: response.status,
+        contentType: response.headers.get('content-type'),
+        blobType: blob.type,
+        size: blob.size,
+        head: blob.size > 4 ? await blob.slice(0, 4).text() : 'too small'
+      });
+      const isPdf = blob.size >= 4 && (await blob.slice(0, 4).text()).startsWith('%PDF');
+      if (blob.size === 0 || !isPdf) {
+        console.error('[PDF Download] Response is not a valid PDF, opening viewer instead');
+        window.open(item.pdfUrl, '_blank');
+        return;
+      }
+      // Force correct MIME type so the file opens properly after download
+      if (blob.type !== 'application/pdf') {
+        blob = new Blob([blob], { type: 'application/pdf' });
+      }
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -40,10 +59,11 @@ const CoursesPage: React.FC = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      // Delay revocation so the browser finishes writing the file
+      setTimeout(() => window.URL.revokeObjectURL(url), 10000);
     } catch (error) {
       console.error('Download failed:', error);
-      // Fallback: open in new tab
+      // Fallback: open in new tab so user can save from the PDF viewer
       window.open(item.pdfUrl, '_blank');
     } finally {
       setDownloadingId(null);

@@ -513,6 +513,15 @@ const Home: React.FC<HomeProps> = ({ services, serviceCategories, testimonials, 
           )}
         </div>
 
+        <div className="flex justify-center mt-8 md:mt-12">
+          <Link 
+            to="/shop" 
+            className="text-rose-700 hover:text-rose-900 text-[10px] md:text-sm font-bold tracking-[0.2em] uppercase border border-rose-200 hover:border-rose-400 rounded-full px-6 md:px-8 py-2 md:py-3 transition-all hover:shadow-md active:scale-95"
+          >
+            View More
+          </Link>
+        </div>
+
       </section>
 
       {/* Promotional Banner: Gemstone Consultation */}
@@ -560,6 +569,15 @@ const Home: React.FC<HomeProps> = ({ services, serviceCategories, testimonials, 
                 product={product}
               />
             ))}
+          </div>
+
+          <div className="flex justify-center mt-8 md:mt-12">
+            <Link 
+              to="/shop" 
+              className="text-rose-700 hover:text-rose-900 text-[10px] md:text-sm font-bold tracking-[0.2em] uppercase border border-rose-200 hover:border-rose-400 rounded-full px-6 md:px-8 py-2 md:py-3 transition-all hover:shadow-md active:scale-95"
+            >
+              View More
+            </Link>
           </div>
 
         </section>
@@ -767,6 +785,15 @@ const Home: React.FC<HomeProps> = ({ services, serviceCategories, testimonials, 
                 product={product}
               />
             ))}
+          </div>
+
+          <div className="flex justify-center mt-8 md:mt-12">
+            <Link 
+              to="/shop" 
+              className="text-rose-700 hover:text-rose-900 text-[10px] md:text-sm font-bold tracking-[0.2em] uppercase border border-rose-200 hover:border-rose-400 rounded-full px-6 md:px-8 py-2 md:py-3 transition-all hover:shadow-md active:scale-95"
+            >
+              View More
+            </Link>
           </div>
 
         </section>
